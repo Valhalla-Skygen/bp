@@ -1,0 +1,31 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "bputils",
+      "dependencies": {
+        "@minecraft/server": "^2.3.0-beta.1.21.110-preview.22",
+        "@minecraft/server-net": "^1.0.0-beta.1.21.130-preview.22",
+        "@minecraft/server-ui": "^2.1.0-beta.1.21.110-preview.22",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.2",
+      },
+    },
+  },
+  "packages": {
+    "@minecraft/common": ["@minecraft/common@1.2.0", "", {}, "sha512-JdmEq4P3Z/FtoBzhLijFgMSVFnFRrUoLwY8DHHrgtFo0mfLTOLTB1RErYjLMsA6b7BGVNxkX/pfFRiH7QZ0XwQ=="],
+
+    "@minecraft/server": ["@minecraft/server@2.3.0-beta.1.21.110-preview.22", "", { "peerDependencies": { "@minecraft/common": "^1.2.0", "@minecraft/vanilla-data": ">=1.20.70 || 1.21.110-preview.22" } }, "sha512-Je0/dtI5l5dRzxPg7s9cPCAm9hf2KBK8sFAvPTYm8CCxHqqweYvooeYxQGZgct3xdzKmjGVt1b3JKcLISFXbrQ=="],
+
+    "@minecraft/server-admin": ["@minecraft/server-admin@1.0.0-beta.release.1.19.50", "", {}, "sha512-RVHU4LLs0gZeTntbfcUEc+WM9DEWXbl1kK+vh02kCta8KSWWmW2aGX+vNdrJjrlyAVy3+uZgzLAb3O67g24xig=="],
+
+    "@minecraft/server-net": ["@minecraft/server-net@1.0.0-beta.1.21.130-preview.22", "", { "peerDependencies": { "@minecraft/common": "^1.0.0", "@minecraft/server": "^1.17.0 || ^2.0.0", "@minecraft/server-admin": "^1.0.0-beta.1.21.130-preview.22" } }, "sha512-mIv6RVlbr+FHEI426GAOHLk2bn7RPf/WPz0raBie+YTge48OQcahveHLvGGiXF07MNZz1Gd5MstRwXVghunp0A=="],
+
+    "@minecraft/server-ui": ["@minecraft/server-ui@2.1.0-beta.1.21.110-preview.22", "", { "peerDependencies": { "@minecraft/common": "^1.0.0", "@minecraft/server": "^2.0.0" } }, "sha512-OkQcLhdbE0eO1hEuY8WaKzBTPV6FIy6CDpVzw19/l5cCkk2GBjQzomQtO4t8Gz2q4jLmBMmRENXiVOiq3zP4Bw=="],
+
+    "@minecraft/vanilla-data": ["@minecraft/vanilla-data@1.21.93", "", {}, "sha512-w5SDYzS02D1i307mnCGdCsLnWpJN1wjWvrSqvCMcqVnTQzAGp6ID5sv6QrjX8FypFEvAgOSB2Isvw38yu3yDag=="],
+
+    "typescript": ["typescript@5.9.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A=="],
+  }
+}

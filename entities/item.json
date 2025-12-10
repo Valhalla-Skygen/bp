@@ -1,0 +1,17 @@
+{
+  "format_version": "1.21.100",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "minecraft:item",
+      "is_summonable": true,
+      "is_spawnable": true
+    },
+    "component_groups": {},
+    "components": {
+      "minecraft:nameable": {
+        "always_show": true
+      }
+    },
+    "events": {}
+  }
+}

@@ -1,0 +1,28 @@
+import "./events";
+import Combat from "./modules/combat";
+import FloatingText from "./modules/floatingText";
+import LagClear from "./modules/lagClear";
+import Leaderboards from "./modules/leaderboards";
+import Names from "./modules/names";
+import Plots from "./modules/plots";
+import Protection from "./modules/protection";
+import Shops from "./modules/shops";
+import Sidebar from "./modules/sidebar";
+import StarterKit from "./modules/starterKit";
+import Stats from "./modules/stats";
+import UI from "./modules/UI";
+import Cache from "./utils/cache";
+
+UI.Init();
+Cache.Init();
+Stats.Init();
+Shops.Init();
+Names.Init();
+Plots.Init();
+Sidebar.Init();
+FloatingText.Init();
+Leaderboards.Init();
+StarterKit.Init();
+Protection.Init();
+LagClear.Init();
+Combat.Init();
