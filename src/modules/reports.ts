@@ -1,22 +1,22 @@
+import type { Player } from "@minecraft/server";
 import API from "../utils/API/API";
 import Form from "../utils/form/form";
 import TargetFinder from "../utils/targetFinder";
-import type Member from "../utils/wrappers/member";
 
 export default class Reports {
-  public static async Create(member: Member): Promise<void> {
-    const target = await TargetFinder.OfflineSearch(member);
+  public static async Create(player: Player): Promise<void> {
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
     }
-    if (target.entity_id === member.EntityID()) {
-      member.SendError("You cannot report yourself!");
+    if (target.entity_id === player.id) {
+      player.sendError("You cannot report yourself!");
       return;
     }
 
     const form = await Form.ModalForm({
-      member,
+      player: player,
       title: "§cReport a Member",
       options: [
         {
@@ -34,29 +34,29 @@ export default class Reports {
     });
 
     if (!form.formValues) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const reason = form.formValues[1] as string;
     const request = await API.Reports.Create({
       reason,
-      source: member.EntityID(),
+      source: player.id,
       target: target.entity_id,
     });
 
     switch (request.status) {
       case 200:
-        member.SendSuccess("Successfully created report!");
+        player.sendSuccess("Successfully created report!");
         break;
       case 409:
-        member.SendError(
+        player.sendError(
           "You have already reported this member, or you are trying to report yourself!"
         );
         break;
 
       default:
-        member.SendError("Failed to create report!");
+        player.sendError("Failed to create report!");
     }
   }
 }

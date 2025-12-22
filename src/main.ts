@@ -11,6 +11,7 @@ import Sidebar from "./modules/sidebar";
 import StarterKit from "./modules/starterKit";
 import Stats from "./modules/stats";
 import UI from "./modules/UI";
+import "./protos/main";
 import Cache from "./utils/cache";
 
 UI.Init();

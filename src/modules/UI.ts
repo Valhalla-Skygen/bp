@@ -2,13 +2,13 @@ import {
   EquipmentSlot,
   ItemLockMode,
   ItemStack,
+  Player,
   system,
+  world,
   type ItemUseAfterEvent,
 } from "@minecraft/server";
 import Config from "../lib/config";
 import Form from "../utils/form/form";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 import Linking from "./linking";
 import Moderation from "./moderation";
 import Plots from "./plots";
@@ -30,14 +30,14 @@ export default class UI {
       return;
     }
 
-    UI.MainPage(new Member(player));
+    UI.MainPage(player);
   }
 
-  public static async MainPage(member: Member): Promise<void> {
+  public static async MainPage(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cValhalla UI",
-      body: `§7Welcome, §l§c${member.Username()}§r§7!\n\nWhat would you like to do?\n\n`,
+      body: `§7Welcome, §l§c${player.name}§r§7!\n\nWhat would you like to do?\n\n`,
       buttons: [
         {
           text: "Warps",
@@ -74,32 +74,32 @@ export default class UI {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
-        Warps.View(member);
+        Warps.View(player);
         break;
       case 1:
-        Plots.Redirector(member);
+        Plots.Redirector(player);
         break;
       case 2:
-        this.PlayerInformationPage(member);
+        this.PlayerInformationPage(player);
         break;
       case 3:
-        this.ServerInformationPage(member);
+        this.ServerInformationPage(player);
         break;
       case 4:
         break;
       case 5:
-        Moderation.View(member);
+        Moderation.View(player);
         break;
     }
   }
-  public static async PlayerInformationPage(member: Member): Promise<void> {
+  public static async PlayerInformationPage(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cPlayer Information",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nWhat would you like to do?\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nWhat would you like to do?\n\n`,
       buttons: [
         {
           text: "Report a Member",
@@ -126,27 +126,27 @@ export default class UI {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
-        Reports.Create(member);
+        Reports.Create(player);
         break;
       case 1:
-        Transfer.View(member);
+        Transfer.View(player);
         break;
       case 2:
-        Stats.View(member);
+        Stats.View(player);
         break;
       case 3:
-        Linking.View(member);
+        Linking.View(player);
         break;
     }
   }
-  public static async ServerInformationPage(member: Member): Promise<void> {
+  public static async ServerInformationPage(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cServer Information",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nWhat would you like to do?\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nWhat would you like to do?\n\n`,
       buttons: [
         {
           text: "Server Rules",
@@ -163,33 +163,39 @@ export default class UI {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
-        Rules.View(member);
+        Rules.View(player);
         break;
       case 1:
-        this.CreditsPage(member);
+        this.CreditsPage(player);
         break;
     }
   }
 
-  private static async CreditsPage(member: Member): Promise<void> {
+  private static async CreditsPage(player: Player): Promise<void> {
     const form = Form.ActionForm({
-      member,
+      player: player,
       title: "§cServer Credits",
       body: [
         `§7Server Credits:`,
         ``,
-        `${Config.chat_rank_definitions.find((def) => def.id === "dev")?.name}§r§7:`,
+        `${
+          Config.chat_rank_definitions.find((def) => def.id === "dev")?.name
+        }§r§7:`,
         `§e Espryra`,
         `§e Zappy NE`,
         ``,
-        `${Config.chat_rank_definitions.find((def) => def.id === "builder")?.name}§r§7:`,
+        `${
+          Config.chat_rank_definitions.find((def) => def.id === "builder")?.name
+        }§r§7:`,
         `§e mrtrex420`,
         // `§e Moderator2`,
         ``,
-        `§l§c${Config.chat_rank_definitions.find((def) => def.id === "staff")?.name}§r§7:`,
+        `§l§c${
+          Config.chat_rank_definitions.find((def) => def.id === "staff")?.name
+        }§r§7:`,
         `§e OarisRose`,
         `§e Kazsey`,
         `§e Serial-V`,
@@ -206,18 +212,18 @@ export default class UI {
       UIItem.nameTag = Config.ui_nametag;
       UIItem.keepOnDeath = true;
 
-      for (const member of World.Members()) {
-        const items = member
-          .FindItem(Config.ui_typeid)
+      for (const player of world.getAllPlayers()) {
+        const items = player
+          .findItem(Config.ui_typeid)
           .filter((item) => item.slot !== EquipmentSlot.Mainhand);
 
         switch (true) {
           case items.length > 1:
-            member.FindItemAndDelete(Config.ui_typeid);
-            member.AddInventoryItem(UIItem);
+            player.findItemAndDelete(Config.ui_typeid);
+            player.addInventoryItem(UIItem);
             break;
           case items.length === 0:
-            member.AddInventoryItem(UIItem);
+            player.addInventoryItem(UIItem);
             break;
         }
       }

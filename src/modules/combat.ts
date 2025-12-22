@@ -3,14 +3,13 @@ import {
   PlayerLeaveAfterEvent,
   PlayerSpawnAfterEvent,
   system,
+  world,
   type EntityHitEntityAfterEvent,
 } from "@minecraft/server";
 import Config from "../lib/config";
 import API from "../utils/API/API";
 import Cache from "../utils/cache";
 import Logger from "../utils/logger";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 
 export default class Combat {
   public static async Init(): Promise<void> {
@@ -31,7 +30,7 @@ export default class Combat {
     });
 
     if (request.status === 200) {
-      World.BroadcastWarning(
+      world.broadcastWarning(
         `§l§c${playerName}§r§7 combat logged and has been punished!`
       );
     } else {
@@ -66,9 +65,7 @@ export default class Combat {
         return;
       }
       if (!Cache.CombatTime[player.id]) {
-        const member = new Member(player);
-
-        member.SendWarning("You have just entered combat!");
+        player.sendWarning("You have just entered combat!");
       }
 
       Cache.CombatTime[player.id] = Config.combat_time;
@@ -77,17 +74,17 @@ export default class Combat {
 
   private static CPSLimiter(): void {
     system.runInterval(() => {
-      for (const member of World.Members()) {
-        const CPS = member.GetCPS();
+      for (const player of world.getAllPlayers()) {
+        const CPS = player.getCPS();
 
         switch (true) {
-          case CPS < Config.cps_limit && member.HasTag("cps"):
-            member.RemoveTag("cps");
-            member.SendSuccess("You are no longer CPS limited!");
+          case CPS < Config.cps_limit && player.hasTag("cps"):
+            player.removeTag("cps");
+            player.sendSuccess("You are no longer CPS limited!");
             break;
-          case CPS >= Config.cps_limit && !member.HasTag("cps"):
-            member.AddTag("cps");
-            member.SendWarning(`You have been CPS limited! (${CPS} CPS)`);
+          case CPS >= Config.cps_limit && !player.hasTag("cps"):
+            player.addTag("cps");
+            player.sendWarning(`You have been CPS limited! (${CPS} CPS)`);
             break;
         }
       }

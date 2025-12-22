@@ -1,16 +1,14 @@
 import {
+  MolangVariableMap,
+  Player,
   system,
   world,
-  MolangVariableMap,
-  type Vector3
+  type Vector3,
 } from "@minecraft/server";
-
 import { PATH_NODES } from "./pathGraph";
-import { getNearestNodeId } from "./pathUtils";
+import { getNearestNodeId, getPlotCenter } from "./pathUtils";
 import { findPath } from "./pathfinding";
 import { PLOTS } from "./plotInfo";
-import { getPlotCenter } from "./pathUtils";
-import type Member from "../wrappers/member";
 
 const PARTICLE_ID = "minecraft:rising_border_dust_particle";
 const PATH_Y = 65; // fallback if node y missing
@@ -18,9 +16,9 @@ const PARTICLE_SPACING = 4;
 const UPDATE_INTERVAL_TICKS = 2;
 
 // New toggles
-const INTERPOLATE_SEGMENTS = true;        // set false to show only original nodes
-const MAX_POINTS_AHEAD = 60;              // limit particles ahead of player
-const MAX_POINTS_BEHIND = 5;              // keep a few behind
+const INTERPOLATE_SEGMENTS = true; // set false to show only original nodes
+const MAX_POINTS_AHEAD = 60; // limit particles ahead of player
+const MAX_POINTS_BEHIND = 5; // keep a few behind
 const MAX_SPAWN_DISTANCE_FROM_PLAYER = 48;
 
 // Limit how far final straight segment can extend (prevents “infinite” line when goal node picked badly)
@@ -51,7 +49,11 @@ function buildPathPoints(nodePath: string[], finalTarget: Vector3): Vector3[] {
     if (!nodeId) continue;
     const node = PATH_NODES[nodeId];
     if (!node) continue;
-    const basePoint: Vector3 = { x: node.pos.x, y: node.pos.y ?? PATH_Y, z: node.pos.z };
+    const basePoint: Vector3 = {
+      x: node.pos.x,
+      y: node.pos.y ?? PATH_Y,
+      z: node.pos.z,
+    };
     points.push(basePoint);
 
     if (!INTERPOLATE_SEGMENTS || i === nodePath.length - 1) continue;
@@ -85,7 +87,9 @@ function buildPathPoints(nodePath: string[], finalTarget: Vector3): Vector3[] {
     const fullDx = finalTarget.x - a.x;
     const fullDy = finalTarget.y - (a.y ?? PATH_Y);
     const fullDz = finalTarget.z - a.z;
-    const fullLength = Math.sqrt(fullDx * fullDx + fullDy * fullDy + fullDz * fullDz);
+    const fullLength = Math.sqrt(
+      fullDx * fullDx + fullDy * fullDy + fullDz * fullDz
+    );
 
     // Only allow a final straight segment if there is no path node closer to the plot than the last node
     let allowFinalSegment = true;
@@ -95,8 +99,8 @@ function buildPathPoints(nodePath: string[], finalTarget: Vector3): Vector3[] {
       if (!node) continue;
       const nodeDist = Math.sqrt(
         (node.pos.x - finalTarget.x) ** 2 +
-        ((node.pos.y ?? PATH_Y) - finalTarget.y) ** 2 +
-        (node.pos.z - finalTarget.z) ** 2
+          ((node.pos.y ?? PATH_Y) - finalTarget.y) ** 2 +
+          (node.pos.z - finalTarget.z) ** 2
       );
       if (nodeDist + 0.01 < fullLength) {
         allowFinalSegment = false;
@@ -135,7 +139,12 @@ function buildPathPoints(nodePath: string[], finalTarget: Vector3): Vector3[] {
 
   if (ALWAYS_INCLUDE_PLOT_CENTER) {
     const last = points[points.length - 1];
-    if (!last || last.x !== finalTarget.x || last.z !== finalTarget.z || last.y !== finalTarget.y) {
+    if (
+      !last ||
+      last.x !== finalTarget.x ||
+      last.z !== finalTarget.z ||
+      last.y !== finalTarget.y
+    ) {
       points.push(finalTarget);
     }
   }
@@ -161,10 +170,13 @@ function buildCumulative(points: Vector3[]): number[] {
 }
 
 // Utility distance
-function dist(a: {x:number; z:number}, b:{x:number; z:number}): number {
+function dist(
+  a: { x: number; z: number },
+  b: { x: number; z: number }
+): number {
   const dx = a.x - b.x;
   const dz = a.z - b.z;
-  return Math.sqrt(dx*dx + dz*dz);
+  return Math.sqrt(dx * dx + dz * dz);
 }
 
 // Improved compressNodePath: removes unnecessary detours at intersections, always prefers direct intersection-to-intersection or intersection-to-goal hops if possible.
@@ -197,11 +209,7 @@ function compressNodePath(nodePath: string[]): string[] {
       if (!a || !b || !c) continue;
 
       // Prefer skipping to an intersection if it's directly reachable and closer or equally close
-      if (
-        a.isIntersection &&
-        a.neighbors.includes(c.id) &&
-        !b.isIntersection
-      ) {
+      if (a.isIntersection && a.neighbors.includes(c.id) && !b.isIntersection) {
         const distAC = dist2D(aId, cId);
         const distAB = dist2D(aId, bId);
         if (c.isIntersection || distAC <= distAB) {
@@ -212,10 +220,7 @@ function compressNodePath(nodePath: string[]): string[] {
       }
 
       // If b is intersection and a can go directly to c, prefer skipping b if c is intersection or closer
-      if (
-        b.isIntersection &&
-        a.neighbors.includes(c.id)
-      ) {
+      if (b.isIntersection && a.neighbors.includes(c.id)) {
         const distAC = dist2D(aId, cId);
         const distAB = dist2D(aId, bId);
         if (c.isIntersection || distAC <= distAB) {
@@ -230,31 +235,31 @@ function compressNodePath(nodePath: string[]): string[] {
   return out;
 }
 
-export function startNavigationToPlot(player: Member, plotId: number) {
+export function startNavigationToPlot(player: Player, plotId: number) {
   const plotCenter = getPlotCenter(plotId);
 
   const plot = PLOTS[plotId];
   if (!plot) {
-    player.SendMessage(`§cPlot ${plotId} is not configured.`);
+    player.sendMessage(`§cPlot ${plotId} is not configured.`);
     return;
   }
-  const playerPos = player.Location();
+  const playerPos = player.location;
 
   const startNodeId = getNearestNodeId({ x: playerPos.x, z: playerPos.z });
   if (!startNodeId) {
-    player.SendMessage("§cCould not find nearest path node.");
+    player.sendMessage("§cCould not find nearest path node.");
     return;
   }
 
   const goalNodeId = getNearestNodeId({ x: plotCenter.x, z: plotCenter.z });
   if (!goalNodeId) {
-    player.SendMessage("§cCould not find path near the plot.");
+    player.sendMessage("§cCould not find path near the plot.");
     return;
   }
 
   const rawNodePath = findPath(startNodeId, goalNodeId);
   if (!rawNodePath) {
-    player.SendMessage("§cNo navigation path available.");
+    player.sendMessage("§cNo navigation path available.");
     return;
   }
 
@@ -264,14 +269,14 @@ export function startNavigationToPlot(player: Member, plotId: number) {
   const pathPoints = buildPathPoints(nodePath, plotCenter);
   const cumulative = buildCumulative(pathPoints);
 
-  activeNav.set(player.EntityID(), {
+  activeNav.set(player.id, {
     plotId,
     nodePath,
     pathPoints,
     cumulative,
   });
-  navStartTick.set(player.EntityID(), system.currentTick); // Track when navigation started
-  player.SendMessage(`§aShowing path to plot §e${plotId}§a.`);
+  navStartTick.set(player.id, system.currentTick); // Track when navigation started
+  player.sendMessage(`§aShowing path to plot §e${plotId}§a.`);
 }
 
 // Add helper exports
@@ -282,7 +287,7 @@ export function isNavigating(playerId: string): boolean {
 export function cancelNavigation(playerId: string): void {
   navStartTick.delete(playerId);
   if (activeNav.delete(playerId)) {
-    const pl = world.getPlayers().find(p => p.id === playerId);
+    const pl = world.getPlayers().find((p) => p.id === playerId);
     if (pl) pl.sendMessage("§cNavigation cancelled.");
   }
 }
@@ -294,14 +299,14 @@ system.runInterval(() => {
     if (now - startTick > NAV_TIMEOUT_TICKS) {
       navStartTick.delete(playerId);
       activeNav.delete(playerId);
-      const pl = world.getPlayers().find(p => p.id === playerId);
+      const pl = world.getPlayers().find((p) => p.id === playerId);
       if (pl) pl.sendMessage("§cNavigation timed out after 5 minutes.");
     }
   }
 }, 40); // check every 2 seconds
 
 // End navigation when player leaves
-world.afterEvents.playerLeave.subscribe(ev => {
+world.afterEvents.playerLeave.subscribe((ev) => {
   cancelNavigation(ev.playerId);
 });
 
@@ -317,7 +322,11 @@ system.runInterval(() => {
       continue;
     }
 
-    const playerPos: Vector3 = { x: pl.location.x, y: pl.location.y, z: pl.location.z };
+    const playerPos: Vector3 = {
+      x: pl.location.x,
+      y: pl.location.y,
+      z: pl.location.z,
+    };
 
     const center = getPlotCenter(plotId);
     const cdx = playerPos.x - center.x;
@@ -325,7 +334,9 @@ system.runInterval(() => {
     const cdz = playerPos.z - center.z;
     if (cdx * cdx + cdy * cdy + cdz * cdz <= 24 * 24) {
       activeNav.delete(pl.id);
-      pl.sendMessage(`§aArrived near plot §e${plotId}§a (within 24 blocks). Navigation ended.`);
+      pl.sendMessage(
+        `§aArrived near plot §e${plotId}§a (within 24 blocks). Navigation ended.`
+      );
       continue;
     }
 
@@ -346,16 +357,20 @@ system.runInterval(() => {
 
     const molang = new MolangVariableMap();
     const start = Math.max(0, nearestIndex - MAX_POINTS_BEHIND);
-    const end = Math.min(pathPoints.length - 1, nearestIndex + MAX_POINTS_AHEAD);
+    const end = Math.min(
+      pathPoints.length - 1,
+      nearestIndex + MAX_POINTS_AHEAD
+    );
 
     for (let i = start; i <= end; i++) {
-      const p = (pathPoints[i]);
+      const p = pathPoints[i];
       if (!p) continue;
       const dx = p.x - playerPos.x;
       const dy = p.y - playerPos.y;
       const dz = p.z - playerPos.z;
       const dSq = dx * dx + dy * dy + dz * dz;
-      if (dSq > MAX_SPAWN_DISTANCE_FROM_PLAYER * MAX_SPAWN_DISTANCE_FROM_PLAYER) continue;
+      if (dSq > MAX_SPAWN_DISTANCE_FROM_PLAYER * MAX_SPAWN_DISTANCE_FROM_PLAYER)
+        continue;
       pl.spawnParticle(PARTICLE_ID, p, molang);
     }
   }

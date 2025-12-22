@@ -1,8 +1,7 @@
-import { EntitySpawnAfterEvent, system } from "@minecraft/server";
+import { EntitySpawnAfterEvent, system, world } from "@minecraft/server";
 import Config from "../lib/config";
 import type { LagClearMessage } from "../types/lagClear";
 import Sleep from "../utils/sleep";
-import World from "../utils/wrappers/world";
 
 export default class LagClear {
   public static async Init(): Promise<void> {
@@ -31,9 +30,10 @@ export default class LagClear {
 
   private static CheckLoop(): void {
     system.runInterval(async () => {
-      const entities = World.Entities().filter((entity) =>
-        Config.lag_clear_entities.includes(entity.typeId)
-      );
+      const entities = world
+        .overworld()
+        .getEntities()
+        .filter((entity) => Config.lag_clear_entities.includes(entity.typeId));
 
       if (entities.length < Config.lag_clear_threshold) {
         return;
@@ -42,7 +42,7 @@ export default class LagClear {
       for (let i = 0; i < Config.lag_clear_countdown.length; i++) {
         const data = Config.lag_clear_countdown[i] as LagClearMessage;
 
-        World.BroadcastWarning(data.message);
+        world.broadcastWarning(data.message);
 
         await Sleep(data.delay);
       }
@@ -53,7 +53,7 @@ export default class LagClear {
         } catch {}
       }
 
-      World.BroadcastSuccess(
+      world.broadcastSuccess(
         `Successfully cleared ${entities.length} total entities!`
       );
     }, Config.lag_clear_check_inverval);

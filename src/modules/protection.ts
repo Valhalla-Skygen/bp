@@ -4,12 +4,12 @@ import {
   Player,
   PlayerInteractWithBlockBeforeEvent,
   system,
+  world,
   type PlayerSpawnAfterEvent,
 } from "@minecraft/server";
 import Config from "../lib/config";
 import Cache from "../utils/cache";
 import Location from "../utils/location";
-import World from "../utils/wrappers/world";
 
 export default class Protection {
   public static async Init(): Promise<void> {
@@ -72,39 +72,39 @@ export default class Protection {
 
   private static SpawnEffects(): void {
     system.runInterval(() => {
-      const members = World.Members().filter((member) =>
-        member.HasTag("spawn")
-      );
+      const members = world
+        .getAllPlayers()
+        .filter((player) => player.hasTag("spawn"));
 
-      for (const member of members) {
-        member.AddEffect("speed", 20, 5);
+      for (const player of members) {
+        player.addEffect("speed", 20, { amplifier: 5 });
       }
     });
   }
   private static ZoneLoop(): void {
     system.runInterval(() => {
-      const members = World.Members();
+      const players = world.getAllPlayers();
 
       for (const zone of Config.zones) {
-        const entities = World.Overworld().getEntities({
+        const entities = world.overworld().getEntities({
           location: zone.location,
           type: "minecraft:player",
           maxDistance: zone.radius,
           tags: [zone.tag],
         });
-        const targets = members.filter((member) => member.HasTag(zone.tag));
+        const targets = players.filter((member) => member.hasTag(zone.tag));
 
         for (const target of targets) {
           const profile = Cache.Profiles.find(
-            (entry) => entry.entity_id === target.EntityID()
+            (entry) => entry.entity_id === target.id
           );
 
           if (profile && profile.admin) {
             continue;
           }
-          if (!entities.some((entity) => entity.id === target.EntityID())) {
-            target.Teleport(zone.location);
-            target.SendWarning(
+          if (!entities.some((entity) => entity.id === target.id)) {
+            target.teleport(zone.location);
+            target.sendWarning(
               "You have left the zone, and have been teleported!"
             );
           }

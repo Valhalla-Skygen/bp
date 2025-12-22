@@ -1,10 +1,9 @@
-import { system } from "@minecraft/server";
+import { system, world } from "@minecraft/server";
 import Config from "../lib/config";
 import type { LeaderboardType } from "../types/leaderboards";
 import API from "../utils/API/API";
 import Formatter from "../utils/formatter";
 import Logger from "../utils/logger";
-import World from "../utils/wrappers/world";
 
 export default class Leaderboards {
   public static async Init(): Promise<void> {
@@ -13,7 +12,9 @@ export default class Leaderboards {
 
   private static Loop(): void {
     system.runInterval(async () => {
-      const entities = World.Entities("valhalla:floating_text");
+      const entities = world
+        .overworld()
+        .getEntities({ type: "valhalla:floating_text" });
       const { data: leaderboards } = await API.Leaderboards.GetLeaderboards();
 
       if (!leaderboards) {

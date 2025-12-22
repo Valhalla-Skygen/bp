@@ -1,12 +1,10 @@
-import type { PlayerSpawnAfterEvent } from "@minecraft/server";
+import { Player, world, type PlayerSpawnAfterEvent } from "@minecraft/server";
 import Config from "../lib/config";
 import type { Ban } from "../types/moderation";
 import API from "../utils/API/API";
 import Cache from "../utils/cache";
 import Form from "../utils/form/form";
 import TargetFinder from "../utils/targetFinder";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 
 export default class Moderation {
   public static async OnSpawn(event: PlayerSpawnAfterEvent): Promise<void> {
@@ -16,14 +14,13 @@ export default class Moderation {
       return;
     }
 
-    const member = new Member(player);
-    const { data: warnings } = await API.Moderation.Warnings(member.EntityID());
-    const { data: bans } = await API.Moderation.ActiveBans(member.EntityID());
+    const { data: warnings } = await API.Moderation.Warnings(player.id);
+    const { data: bans } = await API.Moderation.ActiveBans(player.id);
 
     if (bans && bans.length > 0) {
       const ban = bans.shift() as Ban;
 
-      member.Disconnect(
+      player.disconnect(
         [
           `§c§lYou have been banned!`,
           `§7Reason: ${ban.reason}`,
@@ -41,7 +38,7 @@ export default class Moderation {
       warnings.filter((warning) => warning.active).length >=
         Config.warning_limit
     ) {
-      member.Disconnect(
+      player.disconnect(
         [
           `§c§lYou have reached max warnings!`,
           `§r§7Discord: §cdiscord.gg/Tmmv3mHQv3`,
@@ -51,11 +48,11 @@ export default class Moderation {
     }
   }
 
-  public static async View(member: Member): Promise<void> {
+  public static async View(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cModeration",
-      body: `§7Hello, §c§l${member.Username()}§r§7! Please select an option of moderation down below!`,
+      body: `§7Hello, §c§l${player.name}§r§7! Please select an option of moderation down below!`,
       buttons: [
         {
           text: "Banning",
@@ -72,22 +69,22 @@ export default class Moderation {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
-        Moderation.BanMenu(member);
+        Moderation.BanMenu(player);
         break;
       case 1:
-        Moderation.WarnMenu(member);
+        Moderation.WarnMenu(player);
         break;
     }
   }
 
-  public static async WarnMenu(member: Member): Promise<void> {
+  public static async WarnMenu(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cWarning Menu",
-      body: `§7Hello, §c§l${member.Username()}§r§7! Please select an option of warning down below!`,
+      body: `§7Hello, §c§l${player.name}§r§7! Please select an option of warning down below!`,
       buttons: [
         {
           text: "Get Member's Warnings",
@@ -109,21 +106,21 @@ export default class Moderation {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
-        Moderation.GetWarnings(member);
+        Moderation.GetWarnings(player);
         break;
       case 1:
-        Moderation.Warn(member);
+        Moderation.Warn(player);
         break;
       case 2:
-        Moderation.Unwarn(member);
+        Moderation.Unwarn(player);
         break;
     }
   }
-  public static async GetWarnings(member: Member): Promise<void> {
-    const target = await TargetFinder.OfflineSearch(member);
+  public static async GetWarnings(player: Player): Promise<void> {
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
@@ -132,11 +129,11 @@ export default class Moderation {
     const { data: warnings } = await API.Moderation.Warnings(target.entity_id);
 
     if (warnings === null) {
-      member.SendError(`Error while getting ${target.username}'s warnings!`);
+      player.sendError(`Error while getting ${target.username}'s warnings!`);
       return;
     }
     if (warnings.length === 0) {
-      member.SendError(`${target.username} has no warnings!`);
+      player.sendError(`${target.username} has no warnings!`);
       return;
     }
 
@@ -172,7 +169,7 @@ export default class Moderation {
     }
 
     Form.ActionForm({
-      member,
+      player,
       title: `${target.username}'s Warnings`,
       body: [
         `§e§lAll warnings are shown in UTC timezone§r.\n`,
@@ -213,33 +210,33 @@ export default class Moderation {
       buttons: [],
     });
   }
-  public static async Warn(member: Member): Promise<void> {
+  public static async Warn(player: Player): Promise<void> {
     const profile = Cache.Profiles.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     if (!profile || !profile.admin) {
-      member.SendError("You are not an admin!");
+      player.sendError("You are not an admin!");
       return;
     }
 
-    const target = await TargetFinder.OfflineSearch(member);
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
     }
     if (target.admin) {
-      member.SendError("You cannot warn an admin!");
+      player.sendError("You cannot warn an admin!");
       return;
     }
 
     const form = await Form.ModalForm({
-      member,
+      player: player,
       title: "§cWarn Member",
       options: [
         {
           type: "label",
-          label: `§7Hello, §c§l${member.Username()}§r§7!\n`,
+          label: `§7Hello, §c§l${player.id}§r§7!\n`,
         },
         {
           type: "textfield",
@@ -250,7 +247,7 @@ export default class Moderation {
     });
 
     if (form.formValues === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
@@ -258,31 +255,31 @@ export default class Moderation {
     const { data: warnings } = await API.Moderation.Warnings(target.entity_id);
 
     if (!Array.isArray(warnings)) {
-      member.SendError(`Error while getting ${target.username}'s warnings!`);
+      player.sendError(`Error while getting ${target.username}'s warnings!`);
       return;
     }
 
     const { status } = await API.Moderation.CreateWarning(target.entity_id, {
-      staff: member.EntityID(),
+      staff: player.id,
       reason,
       method: "ingame",
     });
-    const targetMember = World.FindMember(target.entity_id);
+    const targetMember = world.findPlayer(target.entity_id);
 
     switch (status) {
       case 200:
-        World.BroadcastWarning(
+        world.broadcastWarning(
           [
-            `§l§c${member.Username()}§r§7 warned §l§c${target.username}§r§7!`,
+            `§l§c${player.name}§r§7 warned §l§c${target.username}§r§7!`,
             `§cReason: §7${reason}`,
           ].join("\n")
         );
 
         if (targetMember && warnings.length + 1 >= Config.warning_limit) {
-          targetMember.Disconnect(
+          targetMember.disconnect(
             [
               `§c§lYou have reached max warnings!`,
-              `§r§7Staff: §c${member.Username()}`,
+              `§r§7Staff: §c${player.name}`,
               `§7Reason: §c${reason}`,
               `§7Discord: §cdiscord.gg/Tmmv3mHQv3`,
             ].join("\n")
@@ -291,21 +288,21 @@ export default class Moderation {
         break;
 
       default:
-        member.SendError(`Error while warning ${target.username}!`);
+        player.sendError(`Error while warning ${target.username}!`);
         break;
     }
   }
-  public static async Unwarn(member: Member): Promise<void> {
+  public static async Unwarn(player: Player): Promise<void> {
     const profile = Cache.Profiles.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     if (!profile || !profile.admin) {
-      member.SendError("You are not an admin!");
+      player.sendError("You are not an admin!");
       return;
     }
 
-    const target = await TargetFinder.OfflineSearch(member);
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
@@ -314,12 +311,12 @@ export default class Moderation {
     const { data: warnings } = await API.Moderation.Warnings(target.entity_id);
 
     if (!Array.isArray(warnings)) {
-      member.SendError(`Error while getting ${target.username}'s warnings!`);
+      player.sendError(`Error while getting ${target.username}'s warnings!`);
       return;
     }
 
     if (warnings.length === 0) {
-      member.SendError(`${target.username} has no warnings!`);
+      player.sendError(`${target.username} has no warnings!`);
       return;
     }
 
@@ -332,14 +329,14 @@ export default class Moderation {
     });
 
     if (warnings.length === 0) {
-      member.SendError(`${target.username} has no active warnings!`);
+      player.sendError(`${target.username} has no active warnings!`);
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cUnwarn Member",
-      body: `§7Hello, §c§l${member.Username()}§r§7!\n\nPlease select a warning below to revoke it!`,
+      body: `§7Hello, §c§l${player.name}§r§7!\n\nPlease select a warning below to revoke it!`,
       buttons: warnings.map((warning) => {
         const reasonPreview = warning.reason.slice(0, 25);
 
@@ -353,14 +350,14 @@ export default class Moderation {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const warning = warnings[form.selection];
 
     if (!warning) {
-      member.SendError("Invalid warning!");
+      player.sendError("Invalid warning!");
       return;
     }
 
@@ -371,31 +368,29 @@ export default class Moderation {
 
     switch (status) {
       case 200:
-        World.BroadcastWarning(
+        world.broadcastWarning(
           [
-            `§l§c${member.Username()} §r§7has revoked §l§c${
-              target.username
-            }§r§7's warning!`,
+            `§l§c${player.name} §r§7has revoked §l§c${target.username}§r§7's warning!`,
             `§7Reason: §c${warning.reason}`,
           ].join("\n")
         );
         break;
       case 409:
-        member.SendError(`Warning was already revoked!`);
+        player.sendError(`Warning was already revoked!`);
         break;
       default:
-        member.SendError(
+        player.sendError(
           `Error while revoking warning from ${target.username}!`
         );
         break;
     }
   }
 
-  public static async BanMenu(member: Member): Promise<void> {
+  public static async BanMenu(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player,
       title: "§cBan Menu",
-      body: `§7Hello, §c§l${member.Username()}§r§7! Please select an option of banning down below!`,
+      body: `§7Hello, §c§l${player.name}§r§7! Please select an option of banning down below!`,
       buttons: [
         {
           text: "Get Member's Bans",
@@ -417,21 +412,21 @@ export default class Moderation {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
-        Moderation.GetBans(member);
+        Moderation.GetBans(player);
         break;
       case 1:
-        Moderation.Ban(member);
+        Moderation.Ban(player);
         break;
       case 2:
-        Moderation.Unban(member);
+        Moderation.Unban(player);
         break;
     }
   }
-  public static async GetBans(member: Member): Promise<void> {
-    const target = await TargetFinder.OfflineSearch(member);
+  public static async GetBans(player: Player): Promise<void> {
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
@@ -440,11 +435,11 @@ export default class Moderation {
     const { data: bans } = await API.Moderation.Bans(target.entity_id);
 
     if (bans === null) {
-      member.SendError(`Error while getting ${target.username}'s bans!`);
+      player.sendError(`Error while getting ${target.username}'s bans!`);
       return;
     }
     if (bans.length === 0) {
-      member.SendError(`${target.username} has no bans!`);
+      player.sendError(`${target.username} has no bans!`);
       return;
     }
 
@@ -483,7 +478,7 @@ export default class Moderation {
     }
 
     Form.ActionForm({
-      member,
+      player: player,
       title: `${target.username}'s Bans`,
       body: [
         `§e§lAll bans are shown in UTC timezone§r.\n`,
@@ -551,33 +546,33 @@ export default class Moderation {
       buttons: [],
     });
   }
-  public static async Ban(member: Member): Promise<void> {
+  public static async Ban(player: Player): Promise<void> {
     const profile = Cache.Profiles.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     if (!profile || !profile.admin) {
-      member.SendError("You are not an admin!");
+      player.sendError("You are not an admin!");
       return;
     }
 
-    const target = await TargetFinder.OfflineSearch(member);
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
     }
     if (target.admin) {
-      member.SendError("You cannot ban an admin!");
+      player.sendError("You cannot ban an admin!");
       return;
     }
 
     const form = await Form.ModalForm({
-      member,
+      player: player,
       title: "§cBan Member",
       options: [
         {
           type: "label",
-          label: `§7Hello, §c§l${member.Username()}§r§7!\n`,
+          label: `§7Hello, §c§l${player.name}§r§7!\n`,
         },
         {
           type: "textfield",
@@ -594,7 +589,7 @@ export default class Moderation {
     });
 
     if (form.formValues === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
@@ -603,12 +598,12 @@ export default class Moderation {
     const duration = Config.banning_durations[durationIndex];
 
     if (!duration) {
-      member.SendError("Invalid duration!");
+      player.sendError("Invalid duration!");
       return;
     }
 
     const { status } = await API.Moderation.CreateBan(target.entity_id, {
-      staff: member.EntityID(),
+      staff: player.id,
       method: "ingame",
       reason,
       expires_at:
@@ -616,25 +611,23 @@ export default class Moderation {
           ? null
           : new Date(Date.now() + duration.minutes * 60 * 1000),
     });
-    const targetMember = World.FindMember(target.entity_id);
+    const targetMember = world.findPlayer(target.entity_id);
 
     switch (status) {
       case 200:
-        World.BroadcastWarning(
+        world.broadcastWarning(
           [
-            `§l§c${member.Username()} §r§7has banned §l§c${
-              target.username
-            }§r§7!`,
+            `§l§c${player.name} §r§7has banned §l§c${target.username}§r§7!`,
             `§7Reason: §c${reason}`,
             `§7Duration: §c${duration.label}`,
           ].join("\n")
         );
 
         if (targetMember) {
-          targetMember.Disconnect(
+          targetMember.disconnect(
             [
               `§c§lYou have been banned!`,
-              `§7Staff: §c${member.Username()}`,
+              `§7Staff: §c${player.name}`,
               `§7Reason: §c${reason}`,
               `§7Duration: §c${duration.label}`,
               `§7Discord: §cdiscord.gg/Tmmv3mHQv3`,
@@ -643,24 +636,24 @@ export default class Moderation {
         }
         break;
       case 409:
-        member.SendError("Member is already banned!");
+        player.sendError("Member is already banned!");
         break;
       default:
-        member.SendError("Failed to ban member!");
+        player.sendError("Failed to ban member!");
         break;
     }
   }
-  public static async Unban(member: Member): Promise<void> {
+  public static async Unban(player: Player): Promise<void> {
     const profile = Cache.Profiles.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     if (!profile || !profile.admin) {
-      member.SendError("You are not an admin!");
+      player.sendError("You are not an admin!");
       return;
     }
 
-    const target = await TargetFinder.OfflineSearch(member);
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
@@ -669,11 +662,11 @@ export default class Moderation {
     const { data: bans } = await API.Moderation.Bans(target.entity_id);
 
     if (!Array.isArray(bans)) {
-      member.SendError("Failed to get member's bans!");
+      player.sendError("Failed to get member's bans!");
       return;
     }
     if (bans.length === 0) {
-      member.SendError(`${target.username} has no bans!`);
+      player.sendError(`${target.username} has no bans!`);
       return;
     }
 
@@ -690,14 +683,14 @@ export default class Moderation {
     });
 
     if (bans.length === 0) {
-      member.SendError(`${target.username} has no active bans!`);
+      player.sendError(`${target.username} has no active bans!`);
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cUnban Member",
-      body: `§7Hello, §c§l${member.Username()}§r§7!\n\nPlease select a ban below to revoke it!\n\n`,
+      body: `§7Hello, §c§l${player.name}§r§7!\n\nPlease select a ban below to revoke it!\n\n`,
       buttons: bans.map((ban) => {
         const reasonPreview = ban.reason.slice(0, 25);
 
@@ -711,14 +704,14 @@ export default class Moderation {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const ban = bans[form.selection];
 
     if (!ban) {
-      member.SendError("Invalid ban!");
+      player.sendError("Invalid ban!");
       return;
     }
 
@@ -729,20 +722,18 @@ export default class Moderation {
 
     switch (status) {
       case 200:
-        World.BroadcastWarning(
+        world.broadcastWarning(
           [
-            `§l§c${member.Username()} §r§7has revoked §l§c${
-              target.username
-            }§r§7's ban!`,
+            `§l§c${player.name} §r§7has revoked §l§c${target.username}§r§7's ban!`,
             `§7Reason: §c${ban.reason}`,
           ].join("\n")
         );
         break;
       case 409:
-        member.SendError("Ban was already revoked!");
+        player.sendError("Ban was already revoked!");
         break;
       default:
-        member.SendError("Failed to unban member!");
+        player.sendError("Failed to unban member!");
         break;
     }
   }

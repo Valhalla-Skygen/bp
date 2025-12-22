@@ -3,6 +3,7 @@ import {
   Player,
   PlayerInteractWithEntityBeforeEvent,
   system,
+  world,
   type EntityHitEntityAfterEvent,
 } from "@minecraft/server";
 import Config from "../lib/config";
@@ -11,8 +12,6 @@ import API from "../utils/API/API";
 import Form from "../utils/form/form";
 import Formatter from "../utils/formatter";
 import Item from "../utils/item";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 
 export default class Shops {
   private static SellCooldown: Record<string, number> = {};
@@ -38,24 +37,24 @@ export default class Shops {
     system.run(() => this.Handle(player, target));
   }
 
-  public static async Sell(member: Member): Promise<void> {
-    const cooldown = this.SellCooldown[member.EntityID()];
+  public static async Sell(player: Player): Promise<void> {
+    const cooldown = this.SellCooldown[player.id];
 
     if (cooldown && Date.now() - cooldown < 1000) {
-      member.SendError(`Please wait a moment before selling again!`);
+      player.sendError(`Please wait a moment before selling again!`);
       return;
     }
 
-    this.SellCooldown[member.EntityID()] = Date.now();
+    this.SellCooldown[player.id] = Date.now();
 
-    const { data: profile } = await API.Profiles.Profile(member.EntityID());
+    const { data: profile } = await API.Profiles.Profile(player.id);
 
     if (!profile) {
-      member.SendError("Could not find your profile!");
+      player.sendError("Could not find your profile!");
       return;
     }
 
-    const items = member.InventoryItems();
+    const items = player.inventoryItems();
     let totalItems = 0;
     let total = 0;
 
@@ -66,34 +65,34 @@ export default class Shops {
         continue;
       }
 
-      member.SetInventorySlot(item.slot);
+      player.setInventoryItem(item.slot);
 
       totalItems += item.data.amount;
       total += option * item.data.amount;
     }
 
     if (total === 0) {
-      member.SendError("You have no items to sell!");
+      player.sendError("You have no items to sell!");
       return;
     }
 
-    await API.Profiles.Update(member.EntityID(), {
+    await API.Profiles.Update(player.id, {
       balance: profile.balance + total,
     });
 
-    member.SendSuccess(
+    player.sendSuccess(
       `You sold ${totalItems} items for $${Formatter.ToComma(total)}!`
     );
   }
 
-  private static async DisplayShop(member: Member, shop: Shop): Promise<void> {
+  private static async DisplayShop(player: Player, shop: Shop): Promise<void> {
     if (shop.options.length === 0) {
-      member.SendError("Shop is empty!");
+      player.sendError("Shop is empty!");
       return;
     }
 
     const form = await Form.ChestForm({
-      ...Form.BaseChestOptions(member),
+      ...Form.BaseChestOptions(player),
       title: "§c" + shop.name,
       buttons: shop.options.map((option) => {
         return {
@@ -112,7 +111,7 @@ export default class Shops {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
@@ -121,23 +120,21 @@ export default class Shops {
     );
 
     if (!option) {
-      this.DisplayShop(member, shop);
+      this.DisplayShop(player, shop);
       return;
     }
 
-    await this.DisplayOption(member, shop, option);
+    await this.DisplayOption(player, shop, option);
   }
   private static async DisplayOption(
-    member: Member,
+    player: Player,
     shop: Shop,
     option: ShopOption
   ): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§c" + shop.name,
-      body: `§7Hello, ${member.Username()}!\n\nWould you like to purchase §r§l§c${
-        option.name
-      }§r§7?\n\n`,
+      body: `§7Hello, ${player.name}!\n\nWould you like to purchase §r§l§c${option.name}§r§7?\n\n`,
       buttons: [
         {
           text: "Confirm",
@@ -154,24 +151,24 @@ export default class Shops {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         break;
       case 0:
         const items = option.items.map((item) => Item.Create(item));
 
-        if (items.length > member.EmptyInventorySlots()) {
-          member.SendError(
+        if (items.length > player.emptyInventorySlots()) {
+          player.sendError(
             "You don't have enough inventory space for this purchase!"
           );
           break;
         }
         if (items.length === 0) {
-          member.SendError("Shop chest has nothing in it!");
+          player.sendError("Shop chest has nothing in it!");
           break;
         }
 
         const request = await API.Shops.Purchase({
-          entity_id: member.EntityID(),
+          entity_id: player.id,
           option: option.name,
           price: option.price,
           shop: shop.name,
@@ -180,27 +177,27 @@ export default class Shops {
         switch (request.status) {
           case 200:
             for (const item of items) {
-              member.AddInventoryItem(item);
+              player.addInventoryItem(item);
             }
 
-            member.SendSuccess(
+            player.sendSuccess(
               `You have successfully purchased §l${option.name}§r§a!`
             );
             break;
           case 402:
-            member.SendError(
+            player.sendError(
               "You don't have enough balance for this purchase!"
             );
             break;
 
           default:
-            member.SendError("Something went wrong during your purchase!");
+            player.sendError("Something went wrong during your purchase!");
             break;
         }
 
         break;
       case 1:
-        member.SendError(
+        player.sendError(
           `You have cancelled the purchase of §l${option.name}§r!`
         );
         break;
@@ -216,10 +213,8 @@ export default class Shops {
   }
 
   private static Handle(player: Player, entity: Entity): void {
-    const member = new Member(player);
-
     if (entity.hasTag(Config.shop_selling_tag)) {
-      this.Sell(member);
+      this.Sell(player);
       return;
     }
 
@@ -229,13 +224,14 @@ export default class Shops {
       return;
     }
 
-    this.DisplayShop(member, shop);
+    this.DisplayShop(player, shop);
   }
 
   private static UpdateShopNames(): void {
-    const villagers = World.Entities().filter((entity) =>
-      entity.typeId.includes("villager")
-    );
+    const villagers = world
+      .overworld()
+      .getEntities()
+      .filter((entity) => entity.typeId.includes("villager"));
     const sellingVillagers = villagers.filter((entity) =>
       entity.hasTag(Config.shop_selling_tag)
     );

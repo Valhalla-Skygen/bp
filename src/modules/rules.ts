@@ -1,10 +1,10 @@
+import type { Player } from "@minecraft/server";
 import Form from "../utils/form/form";
-import type Member from "../utils/wrappers/member";
 
 export default class Rules {
-  public static async View(member: Member): Promise<void> {
+  public static async View(player: Player): Promise<void> {
     const form = Form.ActionForm({
-      member,
+      player,
       title: "§cServer Rules",
       body: [
         `§7Here are the server rules.`,

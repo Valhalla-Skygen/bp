@@ -1,6 +1,7 @@
 import {
   EquipmentSlot,
   Player,
+  world,
   type EntityHitEntityAfterEvent,
   type PlayerInteractWithEntityAfterEvent,
 } from "@minecraft/server";
@@ -8,16 +9,14 @@ import Config from "../lib/config";
 import Form from "../utils/form/form";
 import Item from "../utils/item";
 import Sleep from "../utils/sleep";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 
 export default class StarterKit {
   public static async Init(): Promise<void> {
     await Sleep(0);
 
-    const entities = World.Entities().filter((entity) =>
-      entity.hasTag(Config.starter_kit_tag)
-    );
+    const entities = world
+      .overworld()
+      .getEntities({ tags: [Config.starter_kit_tag] });
 
     for (const entity of entities) {
       entity.nameTag =
@@ -35,11 +34,11 @@ export default class StarterKit {
       return;
     }
     if (player.isSneaking) {
-      this.Menu(new Member(player));
+      this.Menu(player);
       return;
     }
 
-    this.Give(new Member(player));
+    this.Give(player);
   }
   public static OnInteraction(event: PlayerInteractWithEntityAfterEvent): void {
     const { player, target } = event;
@@ -48,21 +47,21 @@ export default class StarterKit {
       return;
     }
     if (player.isSneaking) {
-      this.Menu(new Member(player));
+      this.Menu(player);
       return;
     }
 
-    this.Give(new Member(player));
+    this.Give(player);
   }
 
-  public static Give(member: Member, silent = false): void {
+  public static Give(player: Player, silent = false): void {
     if (
-      member
-        .EquipmentItems()
+      player
+        .equipmentItems()
         .filter((item) => item.slot !== EquipmentSlot.Mainhand).length > 0
     ) {
       if (!silent) {
-        member.SendError("You already have armor on!");
+        player.sendError("You already have armor on!");
       }
 
       return;
@@ -79,25 +78,25 @@ export default class StarterKit {
     const shovel = Item.Create(Config.starter_kit.shovel);
     const hoe = Item.Create(Config.starter_kit.hoe);
 
-    member.SetEquipmentSlot("Head", helmet);
-    member.SetEquipmentSlot("Chest", chestplate);
-    member.SetEquipmentSlot("Legs", leggings);
-    member.SetEquipmentSlot("Feet", boots);
-    member.AddInventoryItem(sword);
-    member.AddInventoryItem(axe);
-    member.AddInventoryItem(pickaxe);
-    member.AddInventoryItem(shovel);
-    member.AddInventoryItem(hoe);
-    member.AddInventoryItem(food);
+    player.setEquipmentItem("Head", helmet);
+    player.setEquipmentItem("Chest", chestplate);
+    player.setEquipmentItem("Legs", leggings);
+    player.setEquipmentItem("Feet", boots);
+    player.addInventoryItem(sword);
+    player.addInventoryItem(axe);
+    player.addInventoryItem(pickaxe);
+    player.addInventoryItem(shovel);
+    player.addInventoryItem(hoe);
+    player.addInventoryItem(food);
 
     if (!silent) {
-      member.SendSuccess("You have received your starter kit!");
+      player.sendSuccess("You have received your starter kit!");
     }
   }
 
-  private static async Menu(member: Member): Promise<void> {
+  private static async Menu(player: Player): Promise<void> {
     const form = await Form.ChestForm({
-      member,
+      player,
       title: "§cStarter Kit",
       size: "double",
       pattern: {
@@ -182,53 +181,53 @@ export default class StarterKit {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     switch (form.selection) {
       case 4:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.food));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.food));
+        this.Menu(player);
         break;
       case 11:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.sword));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.sword));
+        this.Menu(player);
         break;
       case 13:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.helmet));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.helmet));
+        this.Menu(player);
         break;
       case 15:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.axe));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.axe));
+        this.Menu(player);
         break;
       case 22:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.chestplate));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.chestplate));
+        this.Menu(player);
         break;
       case 29:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.pickaxe));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.pickaxe));
+        this.Menu(player);
         break;
       case 31:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.leggings));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.leggings));
+        this.Menu(player);
         break;
       case 33:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.shovel));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.shovel));
+        this.Menu(player);
         break;
       case 40:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.boots));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.boots));
+        this.Menu(player);
         break;
       case 49:
-        member.AddInventoryItem(Item.Create(Config.starter_kit.hoe));
-        this.Menu(member);
+        player.addInventoryItem(Item.Create(Config.starter_kit.hoe));
+        this.Menu(player);
         break;
       default:
-        this.Menu(member);
+        this.Menu(player);
         break;
     }
   }

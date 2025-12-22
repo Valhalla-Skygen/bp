@@ -6,6 +6,7 @@ import {
   PlayerBreakBlockAfterEvent,
   PlayerSpawnAfterEvent,
   system,
+  world,
   type PlayerLeaveAfterEvent,
 } from "@minecraft/server";
 import API from "../utils/API/API";
@@ -13,8 +14,6 @@ import Cache from "../utils/cache";
 import Form from "../utils/form/form";
 import Formatter from "../utils/formatter";
 import TargetFinder from "../utils/targetFinder";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 
 export default class Stats {
   public static async Init(): Promise<void> {
@@ -28,25 +27,24 @@ export default class Stats {
       return;
     }
 
-    const member = new Member(player);
-    const profile = await API.Profiles.Profile(member.EntityID());
+    const profile = await API.Profiles.Profile(player.id);
 
     if (!profile.data) {
       await API.Profiles.Create({
-        entity_id: member.EntityID(),
-        username: member.Username(),
+        entity_id: player.id,
+        username: player.id,
       });
 
-      member.ClearAll();
+      player.clear();
 
-      World.BroadcastInfo(
-        `<${member.Username()}> joined the server for the first time!`
+      world.broadcastInfo(
+        `<${player.name}> joined the server for the first time!`
       );
       return;
     }
 
-    API.Profiles.Update(member.EntityID(), {
-      username: member.Username(),
+    API.Profiles.Update(player.id, {
+      username: player.name,
       last_login: new Date(),
     });
   }
@@ -67,30 +65,22 @@ export default class Stats {
       return;
     }
 
-    const sourceMember = new Member(source);
-
-    sourceMember.AddEffect("instant_health", 20, 255);
+    source.addEffect("instant_health", 20, { amplifier: 255 });
 
     API.Profiles.Death(target.id);
     API.Profiles.Kill(source.id);
   }
   public static async OnHit(event: EntityHitEntityAfterEvent): Promise<void> {
-    const { damagingEntity: sourcePlayer, hitEntity: targetPlayer } = event;
+    const { damagingEntity: source, hitEntity: target } = event;
 
-    if (
-      !(sourcePlayer instanceof Player) ||
-      !(targetPlayer instanceof Player)
-    ) {
+    if (!(source instanceof Player) || !(target instanceof Player)) {
       return;
     }
 
-    const source = new Member(sourcePlayer);
-    const target = new Member(targetPlayer);
+    source.addCPS();
+    source.setReach(target.location);
 
-    source.AddCPS();
-    source.SetReach(target.Location());
-
-    delete Cache.Combo[target.EntityID()];
+    delete Cache.Combo[target.id];
   }
   public static async OnBreak(
     event: PlayerBreakBlockAfterEvent
@@ -109,20 +99,18 @@ export default class Stats {
       return;
     }
 
-    const sourceMember = new Member(source);
-
-    sourceMember.AddCombo();
+    source.addCombo();
   }
 
-  public static async View(member: Member): Promise<void> {
-    const target = await TargetFinder.OfflineSearch(member);
+  public static async View(player: Player): Promise<void> {
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
     }
 
     Form.ActionForm({
-      member,
+      player: player,
       title: "§cStatistics",
       body: [
         `§7Here is §c${target.username}§7's stats.\n`,
@@ -133,7 +121,9 @@ export default class Stats {
         `§7Kills: §c${Formatter.ToComma(target.kills)}`,
         `§7Deaths: §c${Formatter.ToComma(target.deaths)}`,
         `§7Killstreak: §c${Formatter.ToComma(target.killstreak)}`,
-        `§7Killstreak Highest: §c${Formatter.ToComma(target.killstreak_highest)}\n`,
+        `§7Killstreak Highest: §c${Formatter.ToComma(
+          target.killstreak_highest
+        )}\n`,
         `§l§cGeneral§r§7:`,
         `§7Blocks Mined: §c${Formatter.ToComma(target.blocks_mined)}`,
         `§7Joined: §c${new Date(target.created_at).toDateString()}`,
@@ -146,9 +136,7 @@ export default class Stats {
 
   private static TimePlayed(): void {
     system.runInterval(async () => {
-      API.Profiles.TimePlayed(
-        World.Members().map((member) => member.EntityID())
-      );
+      API.Profiles.TimePlayed(world.getAllPlayers().map((member) => member.id));
     }, 20 * 60);
   }
 }

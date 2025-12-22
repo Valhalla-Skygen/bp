@@ -1,7 +1,6 @@
-import { system } from "@minecraft/server";
+import { system, world } from "@minecraft/server";
 import Config from "../lib/config";
 import Formatter from "../utils/formatter";
-import World from "../utils/wrappers/world";
 
 export default class Names {
   public static async Init(): Promise<void> {
@@ -9,7 +8,9 @@ export default class Names {
   }
 
   private static UpdateItemNames(): void {
-    for (const entity of World.Entities("minecraft:item")) {
+    for (const entity of world
+      .overworld()
+      .getEntities({ type: "minecraft:item" })) {
       const item = entity.getComponent("item")?.itemStack;
 
       if (!item) {
@@ -22,10 +23,14 @@ export default class Names {
     }
   }
   private static UpdatePlayerNames(): void {
-    for (const member of World.Members()) {
-      const health = member.Health();
+    for (const player of world.getAllPlayers()) {
+      const health = player.health();
 
-      member.Player().nameTag = `§c${member.Username()}\n§7[ :heart: §c${health.current.toFixed()}§7/§c${health.max} ǀ  ${member.GetReach()} ǀ  ${member.GetCPS()} §7]`;
+      player.nameTag = `§c${
+        player.name
+      }\n§7[ :heart: §c${health.current.toFixed()}§7/§c${
+        health.max
+      } ǀ  ${player.getReach()} ǀ  ${player.getCPS()} §7]`;
       // add CPS and Reach later
     }
   }

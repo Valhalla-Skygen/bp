@@ -1,18 +1,23 @@
+import type { Player } from "@minecraft/server";
 import {
   ActionFormData,
   ModalFormData,
   ModalFormResponse,
   type ActionFormResponse,
 } from "@minecraft/server-ui";
-import type Member from "../wrappers/member";
+import type {
+  ActionForm,
+  ChestForm,
+  ChestFormItem,
+  ModalForm,
+} from "../../types/chestUI";
 import { ChestFormData } from "./chestUI/forms";
-import type { ActionForm, ChestForm, ChestFormItem, ModalForm } from "./types";
 
 export default class Form {
   public static async ActionForm(
     data: ActionForm
   ): Promise<ActionFormResponse> {
-    const { member, buttons, body, title } = data;
+    const { player, buttons, body, title } = data;
     const form = new ActionFormData();
 
     if (title) form.title(title);
@@ -27,11 +32,10 @@ export default class Form {
       );
     }
 
-    //@ts-ignore This is here because the types are very strict on the ::show method.
-    return await form.show(member.Player());
+    return await form.show(player);
   }
   public static async ModalForm(data: ModalForm): Promise<ModalFormResponse> {
-    const { member, options, title } = data;
+    const { player, options, title } = data;
     const form = new ModalFormData();
 
     if (title) form.title(title);
@@ -73,8 +77,7 @@ export default class Form {
       }
     }
 
-    //@ts-ignore This is here because the types are very strict on the ::show method.
-    return await form.show(member.Player());
+    return await form.show(player);
   }
   /**
    * This will require you to have the chestUI resource pack installed!
@@ -110,11 +113,11 @@ export default class Form {
       }
     }
 
-    return form.show(data.member.Player());
+    return form.show(data.player);
   }
-  public static BaseChestOptions(member: Member): ChestForm {
+  public static BaseChestOptions(player: Player): ChestForm {
     return {
-      member,
+      player: player,
       size: "large",
       title: "Base Chest UI",
       pattern: {

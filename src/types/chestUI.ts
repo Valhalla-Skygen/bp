@@ -1,10 +1,10 @@
-import Member from "../wrappers/member";
+import type { Player } from "@minecraft/server";
 
 export type ActionForm = {
   title?: string;
   body?: string;
   buttons: ActionFormButton[];
-  member: Member;
+  player: Player;
 };
 export type ActionFormButton = {
   text: string;
@@ -22,7 +22,7 @@ export type ModalForm = {
     | ModalFormHeader
     | ModalFormTextField
   )[];
-  member: Member;
+  player: Player;
 };
 export type ModalFormSlider = {
   type: "slider";
@@ -91,7 +91,7 @@ export interface ChestFormButton extends ChestFormItem {
 export type ChestForm = {
   title?: string;
   size: ChestFormSizes;
-  member: Member;
+  player: Player;
   buttons?: ChestFormButton[];
   pattern?: {
     lines: string[];

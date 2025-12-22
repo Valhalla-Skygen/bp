@@ -1,6 +1,7 @@
 import {
   Block,
   BlockVolume,
+  Player,
   PlayerBreakBlockBeforeEvent,
   PlayerInteractWithBlockBeforeEvent,
   PlayerLeaveAfterEvent,
@@ -14,6 +15,8 @@ import {
   type Vector3,
 } from "@minecraft/server";
 import Config from "../lib/config";
+import type { ActionFormButton } from "../types/chestUI";
+import { CommonSounds } from "../types/global";
 import {
   PlotRanks,
   type Plot,
@@ -23,7 +26,6 @@ import {
 import API from "../utils/API/API";
 import Cache from "../utils/cache";
 import Form from "../utils/form/form";
-import type { ActionFormButton } from "../utils/form/types";
 import Formatter from "../utils/formatter";
 import Item from "../utils/item";
 import Location from "../utils/location";
@@ -35,12 +37,10 @@ import {
 } from "../utils/Plots/navigation";
 import Sleep from "../utils/sleep";
 import TargetFinder from "../utils/targetFinder";
-import Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 import StarterKit from "./starterKit";
 
 export default class Plots {
-  private static AllowMembers: boolean = true;
+  private static AllowPlayers: boolean = true;
   public static Raidnight: boolean;
 
   public static async Init(): Promise<void> {
@@ -54,13 +54,12 @@ export default class Plots {
 
   public static async OnSpawn(event: PlayerSpawnAfterEvent): Promise<void> {
     const { player, initialSpawn } = event;
-    const member = new Member(player);
 
     if (!initialSpawn) {
       return;
     }
-    if (!Plots.AllowMembers) {
-      member.Disconnect(
+    if (!Plots.AllowPlayers) {
+      player.disconnect(
         "Plots are currently being unloaded. You are not allowed to be in the server during this process to protect against progress loss."
       );
     }
@@ -81,11 +80,13 @@ export default class Plots {
     }
 
     if (
-      World.Members().filter((entry) =>
-        (members.data as PlotMember[]).some(
-          (member) => member.entity_id === entry.EntityID()
-        )
-      ).length > 0
+      world
+        .getAllPlayers()
+        .filter((entry) =>
+          (members.data as PlotMember[]).some(
+            (member) => member.entity_id === entry.id
+          )
+        ).length > 0
     ) {
       return;
     }
@@ -93,7 +94,7 @@ export default class Plots {
     const slot = Config.plot_slots.find(
       (entry) => entry.slot === (plot.data as Plot).slot
     );
-    const defaultPlot = World.StructureManager().get(
+    const defaultPlot = world.structureManager.get(
       Config.plot_default_structure
     );
 
@@ -101,7 +102,7 @@ export default class Plots {
       return;
     }
 
-    const tickingID = await World.LoadArea(slot.saveZone[0]);
+    const tickingID = await world.loadArea(slot.saveZone[0]);
 
     Plots.SavePlot(plot.data._id, slot);
 
@@ -109,9 +110,9 @@ export default class Plots {
 
     await API.Plots.UpdatePlot(plot.data._id, { slot: 0 });
 
-    World.StructureManager().place(
+    world.structureManager.place(
       defaultPlot,
-      World.Overworld(),
+      world.overworld(),
       slot.saveZone[0],
       {
         animationMode: StructureAnimationMode.Layers,
@@ -122,15 +123,14 @@ export default class Plots {
 
     await Sleep(20 * 5);
 
-    World.UnloadArea(tickingID);
+    world.unloadArea(tickingID);
   }
   public static async OnBreak(
     event: PlayerBreakBlockBeforeEvent
   ): Promise<void> {
     const { block, player } = event;
-    const member = new Member(player);
     const plotMember = Cache.PlotMembers.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     for (const slot of Config.plot_slots) {
@@ -145,7 +145,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(`Claim this plot to break blocks here!`);
+        player.sendError(`Claim this plot to break blocks here!`);
         continue;
       }
       if (this.Raidnight) {
@@ -160,7 +160,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(`You are not allowed to break blocks in this plot!`);
+        player.sendError(`You are not allowed to break blocks in this plot!`);
         continue;
       }
     }
@@ -169,9 +169,8 @@ export default class Plots {
     event: PlayerPlaceBlockBeforeEvent
   ): Promise<void> {
     const { block, player, permutationToPlace } = event;
-    const member = new Member(player);
     const plotMember = Cache.PlotMembers.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     for (const slot of Config.plot_slots) {
@@ -188,7 +187,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(`Claim this plot to place blocks here!`);
+        player.sendError(`Claim this plot to place blocks here!`);
         continue;
       }
       if (
@@ -201,7 +200,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(`You cannot place generators here!`);
+        player.sendError(`You cannot place generators here!`);
         continue;
       }
       if (this.Raidnight) {
@@ -216,7 +215,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(`You are not allowed to place blocks in this plot!`);
+        player.sendError(`You are not allowed to place blocks in this plot!`);
         continue;
       }
     }
@@ -233,9 +232,8 @@ export default class Plots {
       return;
     }
 
-    const member = new Member(player);
     const plotMember = Cache.PlotMembers.find(
-      (entry) => entry.entity_id === member.EntityID()
+      (entry) => entry.entity_id === player.id
     );
 
     for (const slot of Config.plot_slots) {
@@ -252,7 +250,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(`Claim this plot to interact with containers here!`);
+        player.sendError(`Claim this plot to interact with containers here!`);
         continue;
       }
       if (
@@ -260,7 +258,7 @@ export default class Plots {
         plotMember?.permissions.pickup &&
         plotMember.plot_id === plot._id
       ) {
-        system.run(() => this.PickupPage(member, block));
+        system.run(() => this.PickupPage(player, block));
         return;
       }
       if (!block.getComponent("inventory")?.container) {
@@ -278,7 +276,7 @@ export default class Plots {
 
         await Sleep(0);
 
-        member.SendError(
+        player.sendError(
           `You are not allowed to interact with containers in this plot!`
         );
         return;
@@ -286,32 +284,32 @@ export default class Plots {
     }
   }
 
-  public static async Redirector(member: Member): Promise<void> {
-    const plotMember = await API.Plots.Member(member.EntityID());
+  public static async Redirector(player: Player): Promise<void> {
+    const plotMember = await API.Plots.Member(player.id);
 
     if (!plotMember.data) {
-      this.InitPage(member);
+      this.InitPage(player);
       return;
     }
 
     switch (plotMember.data.rank) {
       case PlotRanks.MEMBER:
-        this.MemberPage(member, plotMember.data);
+        this.MemberPage(player, plotMember.data);
         return;
       case PlotRanks.OWNER:
-        this.OwnerPage(member, plotMember.data);
+        this.OwnerPage(player, plotMember.data);
         return;
     }
   }
 
   public static async OwnerPage(
-    member: Member,
+    player: Player,
     plotMember: PlotMember
   ): Promise<void> {
     const plot = await API.Plots.Plot(plotMember.plot_id);
 
     if (!plot.data) {
-      member.SendError("Could not find your plot!");
+      player.sendError("Could not find your plot!");
       return;
     }
 
@@ -321,14 +319,14 @@ export default class Plots {
     const plotMembers = await API.Plots.PlotMembers(plotMember.plot_id);
 
     if (!plotMembers.data) {
-      member.SendError("Could not find your plot members!");
+      player.sendError("Could not find your plot members!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cPlot Management",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nMembers: §a${
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nMembers: §a${
         plotMembers.data.length
       }§7/§c${Config.plot_max_members}\n§7Located at: ${
         !plot.data.slot ? "§cNot Loaded!" : `§aPlot ${plot.data.slot}`
@@ -345,8 +343,10 @@ export default class Plots {
           icon: "textures/items/ender_pearl",
         },
         {
-          text: isNavigating(member.EntityID()) ? "Stop Navigating" : "Navigate to Plot",
-          subtext: isNavigating(member.EntityID()) ? "End Navigation" : "Click to Open",
+          text: isNavigating(player.id)
+            ? "Stop Navigating"
+            : "Navigate to Plot",
+          subtext: isNavigating(player.id) ? "End Navigation" : "Click to Open",
           icon: "textures/ui/icon_map",
         },
         {
@@ -370,53 +370,53 @@ export default class Plots {
     switch (form.selection) {
       case 0:
         plot.data.slot
-          ? this.UnloadPlotConfirmation(member, plot.data)
-          : this.LoadPlot(member, plot.data);
+          ? this.UnloadPlotConfirmation(player, plot.data)
+          : this.LoadPlot(player, plot.data);
         return;
       case 1:
-        this.Teleport(member, slot);
+        this.Teleport(player, slot);
         return;
       case 2:
         // if isNavigating do cancel
-        if (isNavigating(member.EntityID())) {
-          cancelNavigation(member.EntityID());
+        if (isNavigating(player.id)) {
+          cancelNavigation(player.id);
           return;
         }
-        this.NavigateToPlot(member);
+        this.NavigateToPlot(player);
         return;
       case 3:
-        this.MemberManagementPage(member);
+        this.MemberManagementPage(player);
         return;
       case 4:
-        this.InviteManagerPage(member);
+        this.InviteManagerPage(player);
         return;
       case 5:
-        this.TerminatePlotPage(member);
+        this.TerminatePlotPage(player);
         return;
     }
   }
   public static async MemberPage(
-    member: Member,
+    player: Player,
     plotMember: PlotMember
   ): Promise<void> {
     const plot = await API.Plots.Plot(plotMember.plot_id);
 
     if (!plot.data) {
-      member.SendError("Could not find your plot!");
+      player.sendError("Could not find your plot!");
       return;
     }
 
     const plotMembers = await API.Plots.PlotMembers(plotMember.plot_id);
 
     if (!plotMembers.data) {
-      member.SendError("Could not find your plot members!");
+      player.sendError("Could not find your plot members!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cPlot Management",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nMembers: §a${
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nMembers: §a${
         plotMembers.data.length
       }§7/§c${Config.plot_max_members}\n§7Located at: ${
         !plot.data.slot ? "§cNot Loaded!" : `§aPlot ${plot.data.slot}`
@@ -431,10 +431,12 @@ export default class Plots {
           text: "Warp to Plot",
           subtext: "Click to Open",
           icon: "textures/items/ender_pearl",
-        },        
+        },
         {
-          text: isNavigating(member.EntityID()) ? "Stop Navigating" : "Navigate to Plot",
-          subtext: isNavigating(member.EntityID()) ? "End Navigation" : "Click to Open",
+          text: isNavigating(player.id)
+            ? "Stop Navigating"
+            : "Navigate to Plot",
+          subtext: isNavigating(player.id) ? "End Navigation" : "Click to Open",
           icon: "textures/ui/icon_map",
         },
         {
@@ -457,42 +459,42 @@ export default class Plots {
     switch (form.selection) {
       case 0:
         if (!plotMember.permissions.loading) {
-          member.SendError("You do not have permission to load/unload a plot!");
+          player.sendError("You do not have permission to load/unload a plot!");
           return;
         }
 
         plot.data.slot
-          ? this.UnloadPlot(member, plot.data)
-          : this.LoadPlot(member, plot.data);
+          ? this.UnloadPlot(player, plot.data)
+          : this.LoadPlot(player, plot.data);
         return;
       case 1:
-        this.Teleport(member, slot);
+        this.Teleport(player, slot);
         return;
       case 2:
         // if isNavigating do Cancel
-        if (isNavigating(member.EntityID())) {
-          cancelNavigation(member.EntityID());
+        if (isNavigating(player.id)) {
+          cancelNavigation(player.id);
           return;
         }
-        this.NavigateToPlot(member);
+        this.NavigateToPlot(player);
         return;
       case 3:
-        this.InviteManagerPage(member);
+        this.InviteManagerPage(player);
         return;
       case 4:
-        this.LeavePlot(member, plotMember);
+        this.LeavePlot(player, plotMember);
         return;
     }
   }
 
   public static async LeavePlot(
-    member: Member,
+    player: Player,
     plotMember: PlotMember
   ): Promise<void> {
-    await API.Plots.DeleteMember(member.EntityID());
+    await API.Plots.DeleteMember(player.id);
 
     const members = await API.Plots.PlotMembers(plotMember.plot_id);
-    const username = member.Username();
+    const username = player.name;
     let online = 0;
 
     if (!members.data) {
@@ -501,17 +503,17 @@ export default class Plots {
     }
 
     for (const memberData of members.data) {
-      const member = World.FindMember(memberData.entity_id);
+      const member = world.findPlayer(memberData.entity_id);
 
       if (!member) {
         continue;
       }
 
-      member.SendWarning(`§c${username}§e has left the plot!`);
+      member.sendWarning(`§c${username}§e has left the plot!`);
       online++;
     }
 
-    member.SendSuccess("You have left the plot!");
+    player.sendSuccess("You have left the plot!");
 
     if (online !== 0) {
       return;
@@ -531,8 +533,8 @@ export default class Plots {
       return;
     }
 
-    const tickingID = await World.LoadArea(slot.saveZone[0]);
-    const defaultPlot = World.StructureManager().get(
+    const tickingID = await world.loadArea(slot.saveZone[0]);
+    const defaultPlot = world.structureManager.get(
       Config.plot_default_structure
     );
 
@@ -541,13 +543,13 @@ export default class Plots {
     await Sleep(0);
 
     if (!defaultPlot) {
-      World.UnloadArea(tickingID);
+      world.unloadArea(tickingID);
       return;
     }
 
-    World.StructureManager().place(
+    world.structureManager.place(
       defaultPlot,
-      World.Overworld(),
+      world.overworld(),
       slot.saveZone[0],
       {
         animationMode: StructureAnimationMode.Layers,
@@ -558,12 +560,12 @@ export default class Plots {
 
     await Sleep(20 * 5);
 
-    World.UnloadArea(tickingID);
+    world.unloadArea(tickingID);
   }
 
-  public static async LoadPlot(member: Member, plot: Plot): Promise<void> {
-    if (Cache.CombatTime[member.EntityID()]) {
-      member.SendError("You cannot unload your plot while in combat!");
+  public static async LoadPlot(player: Player, plot: Plot): Promise<void> {
+    if (Cache.CombatTime[player.id]) {
+      player.sendError("You cannot unload your plot while in combat!");
       return;
     }
 
@@ -573,7 +575,7 @@ export default class Plots {
       plotCooldown &&
       plotCooldown > new Date(Date.now() - Config.plot_loading_cooldown * 1000)
     ) {
-      member.SendError(
+      player.sendError(
         "Please wait before attempting to load/unload your plot again!"
       );
       return;
@@ -584,7 +586,7 @@ export default class Plots {
     const activePlots = await API.Plots.ActivePlots();
 
     if (!activePlots.data) {
-      member.SendError("Could not find active plots!");
+      player.sendError("Could not find active plots!");
       return;
     }
 
@@ -594,14 +596,14 @@ export default class Plots {
     );
 
     if (slots.length === 0) {
-      member.SendError("There are no available plots!");
+      player.sendError("There are no available plots!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cLoad Plot",
-      body: `§7Hello, §c§l${member.Username()}§r§7!\n\nPlease select a plot below!\n\n`,
+      body: `§7Hello, §c§l${player.name}§r§7!\n\nPlease select a plot below!\n\n`,
       buttons: slots.map((slot) => {
         return {
           text: `§cPlot ${slot.slot}`,
@@ -612,26 +614,26 @@ export default class Plots {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const slot = slots[form.selection];
 
     if (!slot) {
-      member.SendError("Could not find that slot!");
+      player.sendError("Could not find that slot!");
       return;
     }
 
     if (await this.SlotTaken(slot.slot)) {
-      member.SendError("That plot is already taken!");
+      player.sendError("That plot is already taken!");
       return;
     }
 
-    const structure = World.StructureManager().get(`plot:${plot._id}`);
+    const structure = world.structureManager.get(`plot:${plot._id}`);
 
     if (!structure) {
-      member.SendError(
+      player.sendError(
         "It seems your plot structure is missing! Please contact support!"
       );
       return;
@@ -647,22 +649,22 @@ export default class Plots {
     ] as Vector3;
 
     for (const zone of Config.zones) {
-      member.RemoveTag(zone.tag);
+      player.removeTag(zone.tag);
     }
 
-    member.SendMessage(`§7Loading plot...`);
+    player.sendMessage(`§7Loading plot...`);
 
-    await member.FadeCamera();
+    await player.fadeCamera();
 
-    member.TpToSurface(warp);
+    player.tpToSurface(warp);
 
     await Sleep(20);
 
-    member.AddTag("plots");
+    player.addTag("plots");
 
-    World.StructureManager().place(
+    world.structureManager.place(
       structure,
-      World.Overworld(),
+      world.overworld(),
       slot.saveZone[0],
       {
         animationMode: StructureAnimationMode.Layers,
@@ -682,18 +684,18 @@ export default class Plots {
     }
 
     for (const memberData of members.data) {
-      const member = World.FindMember(memberData.entity_id);
+      const member = world.findPlayer(memberData.entity_id);
 
       if (!member) {
         continue;
       }
 
-      member.SendSuccess(`Your plot has been loaded at slot ${slot.slot}!`);
+      member.sendSuccess(`Your plot has been loaded at slot ${slot.slot}!`);
     }
   }
-  public static async UnloadPlot(member: Member, plot: Plot): Promise<void> {
-    if (Cache.CombatTime[member.EntityID()]) {
-      member.SendError("You cannot unload your plot while in combat!");
+  public static async UnloadPlot(player: Player, plot: Plot): Promise<void> {
+    if (Cache.CombatTime[player.id]) {
+      player.sendError("You cannot unload your plot while in combat!");
       return;
     }
 
@@ -703,7 +705,7 @@ export default class Plots {
       plotCooldown &&
       plotCooldown > new Date(Date.now() - Config.plot_loading_cooldown * 1000)
     ) {
-      member.SendError(
+      player.sendError(
         "Please wait before attempting to load/unload your plot again!"
       );
       return;
@@ -714,7 +716,7 @@ export default class Plots {
     const slot = Config.plot_slots.find((entry) => entry.slot === plot.slot);
 
     if (!slot) {
-      member.SendError("Could not find your plot slot!");
+      player.sendError("Could not find your plot slot!");
       return;
     }
 
@@ -723,22 +725,22 @@ export default class Plots {
     ] as Vector3;
 
     for (const zone of Config.zones) {
-      member.RemoveTag(zone.tag);
+      player.removeTag(zone.tag);
     }
 
-    member.SendMessage(`§7Loading plot area...`);
+    player.sendMessage(`§7Loading plot area...`);
 
-    const tickingID = await World.LoadArea(slot.saveZone[0]);
+    const tickingID = await world.loadArea(slot.saveZone[0]);
 
-    member.SendMessage(`§7Unloading plot...`);
+    player.sendMessage(`§7Unloading plot...`);
 
-    await member.FadeCamera();
+    await player.fadeCamera();
 
-    member.TpToSurface(warp);
+    player.tpToSurface(warp);
 
     await Sleep(20);
 
-    member.AddTag("plots");
+    player.addTag("plots");
 
     this.SavePlot(plot._id, slot);
 
@@ -746,9 +748,9 @@ export default class Plots {
       slot: 0,
     });
 
-    World.StructureManager().place(
+    world.structureManager.place(
       Config.plot_default_structure,
-      World.Overworld(),
+      world.overworld(),
       slot.saveZone[0],
       {
         animationMode: StructureAnimationMode.Layers,
@@ -767,27 +769,30 @@ export default class Plots {
     }
 
     for (const memberData of members.data) {
-      const member = World.FindMember(memberData.entity_id);
+      const member = world.findPlayer(memberData.entity_id);
 
       if (!member) {
         continue;
       }
 
-      member.SendWarning(`Your plot has been unloaded!`);
+      member.sendWarning(`Your plot has been unloaded!`);
     }
 
-    World.UnloadArea(tickingID);
+    world.unloadArea(tickingID);
   }
 
-    public static async UnloadPlotConfirmation(member: Member, plot: Plot): Promise<void> {
-    if (Cache.CombatTime[member.EntityID()]) {
-      member.SendError("You cannot unload your plot while in combat!");
+  public static async UnloadPlotConfirmation(
+    player: Player,
+    plot: Plot
+  ): Promise<void> {
+    if (Cache.CombatTime[player.id]) {
+      player.sendError("You cannot unload your plot while in combat!");
       return;
     }
 
     // Confirmation form before unloading
     const confirm = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cUnload Plot",
       body: "Are you sure you want to unload your plot?\n\nThis will remove your plot from the world until you load it again.",
       buttons: [
@@ -800,12 +805,12 @@ export default class Plots {
           text: "Cancel",
           subtext: "Click to Cancel",
           icon: "textures/ui/cancel",
-        }
-      ]
+        },
+      ],
     });
 
     if (confirm.selection !== 0) {
-      member.SendWarning("Plot unload cancelled.");
+      player.sendWarning("Plot unload cancelled.");
       return;
     }
 
@@ -815,7 +820,7 @@ export default class Plots {
       plotCooldown &&
       plotCooldown > new Date(Date.now() - Config.plot_loading_cooldown * 1000)
     ) {
-      member.SendError(
+      player.sendError(
         "Please wait before attempting to load/unload your plot again!"
       );
       return;
@@ -826,7 +831,7 @@ export default class Plots {
     const slot = Config.plot_slots.find((entry) => entry.slot === plot.slot);
 
     if (!slot) {
-      member.SendError("Could not find your plot slot!");
+      player.sendError("Could not find your plot slot!");
       return;
     }
 
@@ -835,22 +840,22 @@ export default class Plots {
     ] as Vector3;
 
     for (const zone of Config.zones) {
-      member.RemoveTag(zone.tag);
+      player.removeTag(zone.tag);
     }
 
-    member.SendMessage(`§7Loading plot area...`);
+    player.sendMessage(`§7Loading plot area...`);
 
-    const tickingID = await World.LoadArea(slot.saveZone[0]);
+    const tickingID = await world.loadArea(slot.saveZone[0]);
 
-    member.SendMessage(`§7Unloading plot...`);
+    player.sendMessage(`§7Unloading plot...`);
 
-    await member.FadeCamera();
+    await player.fadeCamera();
 
-    member.TpToSurface(warp);
+    player.tpToSurface(warp);
 
     await Sleep(20);
 
-    member.AddTag("plots");
+    player.addTag("plots");
 
     this.SavePlot(plot._id, slot);
 
@@ -858,9 +863,9 @@ export default class Plots {
       slot: 0,
     });
 
-    World.StructureManager().place(
+    world.structureManager.place(
       Config.plot_default_structure,
-      World.Overworld(),
+      world.overworld(),
       slot.saveZone[0],
       {
         animationMode: StructureAnimationMode.Layers,
@@ -879,37 +884,37 @@ export default class Plots {
     }
 
     for (const memberData of members.data) {
-      const member = World.FindMember(memberData.entity_id);
+      const member = world.findPlayer(memberData.entity_id);
 
       if (!member) {
         continue;
       }
 
-      member.SendWarning(`Your plot has been unloaded!`);
+      member.sendWarning(`Your plot has been unloaded!`);
     }
 
-    World.UnloadArea(tickingID);
+    world.unloadArea(tickingID);
   }
 
-  public static async TerminatePlotPage(member: Member): Promise<void> {
-    const plotMember = await API.Plots.Member(member.EntityID());
+  public static async TerminatePlotPage(player: Player): Promise<void> {
+    const plotMember = await API.Plots.Member(player.id);
 
     if (!plotMember.data) {
-      member.SendError("Could not find your plot!");
+      player.sendError("Could not find your plot!");
       return;
     }
 
     const plot = await API.Plots.Plot(plotMember.data.plot_id);
 
     if (!plot) {
-      member.SendError("Could not find your plot!");
+      player.sendError("Could not find your plot!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cTerminate Plot",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nAre you sure you want to terminate your plot? You cannot undo this action, and this will dismember everyone in your plot!\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nAre you sure you want to terminate your plot? You cannot undo this action, and this will dismember everyone in your plot!\n\n`,
       buttons: [
         {
           text: "Terminate Plot",
@@ -926,30 +931,30 @@ export default class Plots {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         return;
       case 0:
         const members = await API.Plots.PlotMembers(plotMember.data.plot_id);
 
         if (!members.data) {
-          member.SendError("Could not find your plot members!");
+          player.sendError("Could not find your plot members!");
           return;
         }
 
         await API.Plots.DeletePlot(plotMember.data.plot_id);
-        World.StructureManager().delete(`plot:${plotMember.data.plot_id}`);
+        world.structureManager.delete(`plot:${plotMember.data.plot_id}`);
 
         for (const plotMember of members.data) {
-          const member = World.FindMember(plotMember.entity_id);
+          const member = world.findPlayer(plotMember.entity_id);
 
           if (!member) {
             continue;
           }
 
-          member.SendWarning("Your plot has been terminated!");
+          member.sendWarning("Your plot has been terminated!");
         }
 
-        const defaultPlot = World.StructureManager().get(
+        const defaultPlot = world.structureManager.get(
           Config.plot_default_structure
         );
         const slot = Config.plot_slots.find(
@@ -960,9 +965,9 @@ export default class Plots {
           return;
         }
 
-        World.StructureManager().place(
+        world.structureManager.place(
           defaultPlot,
-          World.Overworld(),
+          world.overworld(),
           slot.saveZone[0],
           {
             animationMode: StructureAnimationMode.Layers,
@@ -972,30 +977,30 @@ export default class Plots {
         );
         return;
       case 1:
-        member.SendWarning("Plot termination cancelled!");
+        player.sendWarning("Plot termination cancelled!");
         return;
     }
   }
 
-  public static async InviteManagerPage(member: Member): Promise<void> {
-    const plotMember = await API.Plots.Member(member.EntityID());
+  public static async InviteManagerPage(player: Player): Promise<void> {
+    const plotMember = await API.Plots.Member(player.id);
 
     if (!plotMember.data) {
-      member.SendError("Could not find your plot!");
+      player.sendError("Could not find your plot!");
       return;
     }
     if (
       plotMember.data.rank !== PlotRanks.OWNER &&
       !plotMember.data.permissions.inviting
     ) {
-      member.SendError("You do not have permission to invite members!");
+      player.sendError("You do not have permission to invite members!");
       return;
     }
 
     const invites = await API.Plots.PlotInvites(plotMember.data.plot_id);
 
     if (!invites.data) {
-      member.SendError("Could not find your plot invites!");
+      player.sendError("Could not find your plot invites!");
       return;
     }
 
@@ -1017,9 +1022,9 @@ export default class Plots {
       } as ActionFormButton;
     });
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cInvite Manager",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nPlease select an invite below to delete it, or select "Send Invite" to invite a new member!\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nPlease select an invite below to delete it, or select "Send Invite" to invite a new member!\n\n`,
       buttons: [
         {
           text: "Send Invite",
@@ -1031,30 +1036,30 @@ export default class Plots {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
     if (form.selection === 0) {
-      this.InviteMember(member, plotMember.data.plot_id);
+      this.InviteMember(player, plotMember.data.plot_id);
       return;
     }
 
     const invite = invites.data[form.selection - 1];
 
     if (!invite) {
-      member.SendError("Could not find invite!");
+      player.sendError("Could not find invite!");
       return;
     }
 
     await API.Plots.DeleteInvite(plotMember.data.plot_id, invite._id);
 
-    member.SendSuccess("Successfully deleted invite!");
+    player.sendSuccess("Successfully deleted invite!");
   }
   public static async InviteMember(
-    member: Member,
+    player: Player,
     plot_id: string
   ): Promise<void> {
-    const targetData = await TargetFinder.OfflineSearch(member);
+    const targetData = await TargetFinder.OfflineSearch(player);
 
     if (!targetData) {
       return;
@@ -1062,32 +1067,32 @@ export default class Plots {
 
     const request = await API.Plots.Invite(plot_id, {
       plot_id,
-      sender: member.EntityID(),
+      sender: player.id,
       target: targetData.entity_id,
     });
-    const target = World.FindMember(targetData.entity_id);
+    const target = world.findPlayer(targetData.entity_id);
 
     switch (request.status) {
       case 200:
-        member.SendSuccess(
+        player.sendSuccess(
           `Successfully invited ${targetData.username} to your plot!`
         );
 
         if (target) {
-          target.SendSuccess(
-            `You have been invited to join ${member.Username()}'s plot!`
+          target.sendSuccess(
+            `You have been invited to join ${player.name}'s plot!`
           );
         }
 
         return;
       case 400:
-        member.SendError("Error while sending invite!");
+        player.sendError("Error while sending invite!");
         return;
       case 404:
-        member.SendError("Could not find your target!");
+        player.sendError("Could not find your target!");
         return;
       case 409:
-        member.SendError(
+        player.sendError(
           `${targetData.username} is already in a plot, or you have already invited them!`
         );
         return;
@@ -1095,11 +1100,11 @@ export default class Plots {
   }
 
   public static async Teleport(
-    member: Member,
+    player: Player,
     slot: PlotSlot | undefined
   ): Promise<void> {
     if (!slot) {
-      member.SendError("Your plot is not loaded!");
+      player.sendError("Your plot is not loaded!");
       return;
     }
 
@@ -1107,49 +1112,55 @@ export default class Plots {
       Math.floor(Math.random() * slot.locations.length)
     ] as Vector3;
 
-    const currentTag = Config.zones.find((entry) => member.HasTag(entry.tag));
+    const currentTag = Config.zones.find((entry) => player.hasTag(entry.tag));
 
     for (const entry of Config.zones) {
-      member.RemoveTag(entry.tag);
+      player.removeTag(entry.tag);
     }
 
-    if (Cache.CombatTime[member.EntityID()]) {
-      member.SendError("You cannot teleport while in combat!");
+    if (Cache.CombatTime[player.id]) {
+      player.sendError("You cannot teleport while in combat!");
 
       if (currentTag) {
-        member.AddTag(currentTag.tag);
+        player.addTag(currentTag.tag);
       }
 
       return;
     } else {
-      await member.FadeCamera();
+      await player.fadeCamera();
 
-      member.TpToSurface(warp);
+      player.tpToSurface(warp);
 
-      member.AddEffect("resistance", 20 * 3, 255);
-      member.AddEffect("weakness", 20 * 3, 255);
+      player.addEffect("resistance", 20 * 3, {
+        amplifier: 255,
+        showParticles: false,
+      });
+      player.addEffect("weakness", 20 * 3, {
+        amplifier: 255,
+        showParticles: false,
+      });
 
       await Sleep(20);
     }
 
-    member.AddTag("plots");
-    member.SendSuccess("Successfully teleported you to your plot!");
+    player.addTag("plots");
+    player.sendSuccess("Successfully teleported you to your plot!");
 
-    StarterKit.Give(member, true);
+    StarterKit.Give(player, true);
   }
 
-  public static async NavigateToPlot(member: Member): Promise<void> {
-    const plotMember = await API.Plots.Member(member.EntityID());
+  public static async NavigateToPlot(player: Player): Promise<void> {
+    const plotMember = await API.Plots.Member(player.id);
 
     if (!plotMember.data) {
-      member.SendError("Could not find your plot member data!");
+      player.sendError("Could not find your plot member data!");
       return;
     }
 
     const plots = Config.plot_slots;
 
     if (plots.length === 0) {
-      member.SendError("There are no loaded plots to navigate to!");
+      player.sendError("There are no loaded plots to navigate to!");
       return;
     }
 
@@ -1157,12 +1168,12 @@ export default class Plots {
     plots.sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
 
     // Check if currently navigating
-    const currentlyNavigating = isNavigating(member.EntityID());
+    const currentlyNavigating = isNavigating(player.id);
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cNavigate to Plot",
-      body: `§7Hello, §c§l${member.Username()}§r§7!\n\nPlease select a plot below to navigate to!\n\n`,
+      body: `§7Hello, §c§l${player.name}§r§7!\n\nPlease select a plot below to navigate to!\n\n`,
       buttons: [
         ...plots.map((plot) => ({
           text: `§cPlot ${plot.slot}`,
@@ -1173,13 +1184,13 @@ export default class Plots {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     if (form.selection === 0 && currentlyNavigating) {
-      cancelNavigation(member.EntityID());
-      member.SendSuccess("Navigation cancelled.");
+      cancelNavigation(player.id);
+      player.sendSuccess("Navigation cancelled.");
       return;
     }
 
@@ -1187,44 +1198,44 @@ export default class Plots {
     const selectedPlot = plots[form.selection];
 
     if (!selectedPlot || !selectedPlot.slot) {
-      member.SendError("Could not find that plot!");
+      player.sendError("Could not find that plot!");
       return;
     }
 
     try {
-      startNavigationToPlot(member, selectedPlot.slot);
+      startNavigationToPlot(player, selectedPlot.slot);
     } catch (e) {
       Logger.Error(
         `Failed to start navigation: ${String(e)}`,
         JSON.stringify(selectedPlot, null, 2)
       );
-      member.SendError("Failed to start navigation to that plot!");
+      player.sendError("Failed to start navigation to that plot!");
     }
   }
 
-  public static async MemberManagementPage(member: Member): Promise<void> {
-    const plotMember = await API.Plots.Member(member.EntityID());
+  public static async MemberManagementPage(player: Player): Promise<void> {
+    const plotMember = await API.Plots.Member(player.id);
 
     if (!plotMember.data) {
-      member.SendError("Could not find your plot member data!");
+      player.sendError("Could not find your plot member data!");
       return;
     }
     if (plotMember.data.rank !== PlotRanks.OWNER) {
-      member.SendError("You do not have permission to manage members!");
+      player.sendError("You do not have permission to manage members!");
       return;
     }
 
     const members = await API.Plots.PlotMembers(plotMember.data.plot_id);
 
     if (!members.data) {
-      member.SendError("Could not find your plot members!");
+      player.sendError("Could not find your plot members!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cMember Manager",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nPlease select a member below to manage them!\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nPlease select a member below to manage them!\n\n`,
       buttons: await Promise.all(
         members.data.map(async (member) => {
           const profile = await API.Profiles.Profile(member.entity_id);
@@ -1247,42 +1258,42 @@ export default class Plots {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const target = members.data[form.selection];
 
     if (!target) {
-      member.SendError("Could not find member!");
+      player.sendError("Could not find member!");
       return;
     }
 
-    this.ManageMemberPage(member, target);
+    this.ManageMemberPage(player, target);
   }
   public static async ManageMemberPage(
-    member: Member,
+    player: Player,
     target: PlotMember
   ): Promise<void> {
     if (target.rank === PlotRanks.OWNER) {
-      member.SendError("You cannot manage the owner of your plot!");
+      player.sendError("You cannot manage the owner of your plot!");
       return;
     }
 
     const targetData = await API.Profiles.Profile(target.entity_id);
 
     if (!targetData.data) {
-      member.SendError("Could not find your target!");
+      player.sendError("Could not find your target!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cMember Manager",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nYour currently managing §g${
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nYour currently managing §g${
         targetData.data.username
       }§7 and they are currently ${
-        !World.FindMember(target.entity_id) ? "§coffline" : "§aonline"
+        !world.findPlayer(target.entity_id) ? "§coffline" : "§aonline"
       }§7!\n\nPlease select an option below!\n\n`,
       buttons: [
         {
@@ -1306,7 +1317,7 @@ export default class Plots {
     switch (form.selection) {
       case 0: {
         const form = await Form.ModalForm({
-          member,
+          player: player,
           title: "§cMember Permissions",
           options: [
             {
@@ -1343,7 +1354,7 @@ export default class Plots {
         });
 
         if (!form.formValues) {
-          member.SendError("Form closed.");
+          player.sendError("Form closed.");
           return;
         }
 
@@ -1365,18 +1376,16 @@ export default class Plots {
           },
         });
 
-        member.SendSuccess(
+        player.sendSuccess(
           `Successfully updated permissions for §g${targetData.data.username}§a!`
         );
         return;
       }
       case 1: {
         const form = await Form.ActionForm({
-          member,
+          player: player,
           title: "§cTransfer Ownership",
-          body: `§7Hello, §l§c${member.Username()}§r§7!\n\nAre you sure that you would like to transfer ownership to §g${
-            targetData.data.username
-          }§7?\n\n`,
+          body: `§7Hello, §l§c${player.name}§r§7!\n\nAre you sure that you would like to transfer ownership to §g${targetData.data.username}§7?\n\n`,
           buttons: [
             {
               text: "Confirm",
@@ -1393,25 +1402,25 @@ export default class Plots {
 
         switch (form.selection) {
           case undefined:
-            member.SendError("Form closed.");
+            player.sendError("Form closed.");
             return;
           case 0:
             await API.Plots.TransferOwnership(target.plot_id, target.entity_id);
 
-            member.SendSuccess(
+            player.sendSuccess(
               `Successfully transferred ownership to §g${targetData.data.username}§a!`
             );
 
-            const targetMember = World.FindMember(target.entity_id);
+            const targetMember = world.findPlayer(target.entity_id);
 
             if (targetMember) {
-              targetMember.SendSuccess(
+              targetMember.sendSuccess(
                 `You have been transferred ownership for your plot!`
               );
             }
             return;
           case 1:
-            member.SendWarning("Ownership transfer cancelled.");
+            player.sendWarning("Ownership transfer cancelled.");
             return;
         }
 
@@ -1419,11 +1428,9 @@ export default class Plots {
       }
       case 2: {
         const form = await Form.ActionForm({
-          member,
+          player: player,
           title: "§cKick Member",
-          body: `§7Hello, §l§c${member.Username()}§r§7!\n\nAre you sure that you would like to kick §g${
-            targetData.data.username
-          }§7?\n\n`,
+          body: `§7Hello, §l§c${player.name}§r§7!\n\nAre you sure that you would like to kick §g${targetData.data.username}§7?\n\n`,
           buttons: [
             {
               text: "Confirm",
@@ -1440,52 +1447,52 @@ export default class Plots {
 
         switch (form.selection) {
           case undefined:
-            member.SendError("Form closed.");
+            player.sendError("Form closed.");
             return;
           case 0:
             await API.Plots.DeleteMember(target.entity_id);
 
             const members = await API.Plots.PlotMembers(target.plot_id);
-            const kicker = member.Username();
+            const kicker = player.name;
 
             if (!members.data) {
-              member.SendError("Could not find your plot members!");
+              player.sendError("Could not find your plot members!");
               return;
             }
 
             for (const memberData of members.data) {
-              const member = World.FindMember(memberData.entity_id);
+              const member = world.findPlayer(memberData.entity_id);
 
               if (!member) {
                 continue;
               }
 
-              member.SendWarning(
+              member.sendWarning(
                 `§g${kicker}§e has kicked §g${targetData.data.username}§e from the plot!`
               );
             }
 
-            const targetMember = World.FindMember(target.entity_id);
+            const targetMember = world.findPlayer(target.entity_id);
 
             if (targetMember) {
-              targetMember.SendError(
+              targetMember.sendError(
                 `You have been kicked from the plot by §g${kicker}§c!`
               );
             }
             return;
           case 1:
-            member.SendWarning("Kick cancelled.");
+            player.sendWarning("Kick cancelled.");
             return;
         }
       }
     }
   }
 
-  public static async InitPage(member: Member): Promise<void> {
+  public static async InitPage(player: Player): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cPlot Menu",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nPlease select an option down below!\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nPlease select an option down below!\n\n`,
       buttons: [
         {
           text: "Create a Plot",
@@ -1502,32 +1509,32 @@ export default class Plots {
 
     switch (form.selection) {
       case undefined:
-        member.SendError("Form closed.");
+        player.sendError("Form closed.");
         return;
       case 0:
-        this.CreatePlot(member);
+        this.CreatePlot(player);
         return;
       case 1:
-        this.JoinPlotPage(member);
+        this.JoinPlotPage(player);
         return;
     }
   }
-  public static async JoinPlotPage(member: Member): Promise<void> {
-    const invites = await API.Plots.MemberInvites(member.EntityID());
+  public static async JoinPlotPage(player: Player): Promise<void> {
+    const invites = await API.Plots.MemberInvites(player.id);
 
     if (!invites.data) {
-      member.SendError("Could not find your plot invites!");
+      player.sendError("Could not find your plot invites!");
       return;
     }
     if (invites.data.length === 0) {
-      member.SendError("You do not have any plot invites!");
+      player.sendError("You do not have any plot invites!");
       return;
     }
 
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cPlot Invites",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nPlease select a plot invite below!\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nPlease select a plot invite below!\n\n`,
       buttons: await Promise.all(
         invites.data.map(async (invite) => {
           const profile = await API.Profiles.Profile(invite.sender);
@@ -1550,14 +1557,14 @@ export default class Plots {
     });
 
     if (form.selection === undefined) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const invite = invites.data[form.selection];
 
     if (!invite) {
-      member.SendError("Could not find your plot invite!");
+      player.sendError("Could not find your plot invite!");
       return;
     }
 
@@ -1568,63 +1575,63 @@ export default class Plots {
         const members = await API.Plots.PlotMembers(invite.plot_id);
 
         if (!members.data) {
-          member.SendError("Could not find your plot members!");
+          player.sendError("Could not find your plot members!");
           return;
         }
 
-        const target = World.FindMember(invite.target);
+        const target = world.findPlayer(invite.target);
 
         if (!target) {
           return;
         }
 
         for (const memberData of members.data) {
-          const member = World.FindMember(memberData.entity_id);
+          const member = world.findPlayer(memberData.entity_id);
 
           if (!member) {
             continue;
           }
 
-          member.SendSuccess(`§g${target.Username()}§a has joined your plot!`);
+          member.sendSuccess(`§g${target.name}§a has joined your plot!`);
         }
 
         return;
       case 204:
-        member.SendError("This plot has max members!");
+        player.sendError("This plot has max members!");
         return;
       case 400:
-        member.SendError("Error accepting invite!");
+        player.sendError("Error accepting invite!");
         return;
       case 404:
-        member.SendError("Could not find your plot invite!");
+        player.sendError("Could not find your plot invite!");
         return;
       case 409:
-        member.SendError("You are already in a plot!");
+        player.sendError("You are already in a plot!");
         return;
     }
   }
-  public static async CreatePlot(member: Member): Promise<void> {
+  public static async CreatePlot(player: Player): Promise<void> {
     const request = await API.Plots.CreatePlot({
-      created_by: member.EntityID(),
+      created_by: player.id,
     });
 
     switch (request.status) {
       case 200:
-        const plotMember = await API.Plots.Member(member.EntityID());
+        const plotMember = await API.Plots.Member(player.id);
 
         if (!plotMember.data) {
-          member.SendError("Could not find your plot member data!");
+          player.sendError("Could not find your plot member data!");
           return;
         }
 
-        const structure = World.StructureManager().get(
+        const structure = world.structureManager.get(
           Config.plot_default_structure
         );
 
         if (!structure) {
           await API.Plots.DeletePlot(plotMember.data.plot_id);
 
-          member.SendError(
+          player.sendError(
             "It seems our default plot is missing, please contact support!"
           );
           return;
@@ -1635,27 +1642,27 @@ export default class Plots {
           StructureSaveMode.World
         );
 
-        member.SendSuccess(
+        player.sendSuccess(
           `Successfully created your plot! Please access the plot menu again to access the control panel.`
         );
         return;
       case 400:
-        member.SendError("Error creating plot!");
+        player.sendError("Error creating plot!");
         return;
       case 404:
-        member.SendError("Could not find your plot member data!");
+        player.sendError("Could not find your plot member data!");
         return;
       case 409:
-        member.SendError("You already have a plot!");
+        player.sendError("You already have a plot!");
         return;
     }
   }
 
-  public static async PickupPage(member: Member, block: Block): Promise<void> {
+  public static async PickupPage(player: Player, block: Block): Promise<void> {
     const form = await Form.ActionForm({
-      member,
+      player: player,
       title: "§cGenerator Pickup",
-      body: `§7Hello, §l§c${member.Username()}§r§7!\n\nAre you sure you would like to pickup this generator?\n\n`,
+      body: `§7Hello, §l§c${player.name}§r§7!\n\nAre you sure you would like to pickup this generator?\n\n`,
       buttons: [
         {
           text: "Yes",
@@ -1671,18 +1678,18 @@ export default class Plots {
     });
 
     if (form.selection === undefined || form.selection === 1) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
-    if (member.EmptyInventorySlots() === 0) {
-      member.SendError("You do not have enough inventory space!");
+    if (player.emptyInventorySlots() === 0) {
+      player.sendError("You do not have enough inventory space!");
       return;
     }
 
     const above = block.above();
 
     if (!above || above.typeId === "minecraft:air") {
-      member.SendError("Could not find the generator!");
+      player.sendError("Could not find the generator!");
       return;
     }
 
@@ -1693,13 +1700,15 @@ export default class Plots {
       keepOnDeath: true,
     });
 
-    World.Overworld().fillBlocks(
-      new BlockVolume(block.location, above.location),
-      "minecraft:air"
-    );
+    world
+      .overworld()
+      .fillBlocks(
+        new BlockVolume(block.location, above.location),
+        "minecraft:air"
+      );
 
-    member.AddInventoryItem(item);
-    member.SendSuccess("Successfully picked up the generator!");
+    player.addInventoryItem(item);
+    player.sendSuccess("Successfully picked up the generator!");
   }
 
   public static async SlotTaken(slot: number): Promise<boolean> {
@@ -1717,7 +1726,7 @@ export default class Plots {
       const plots = Object.values(Cache.Plots);
       const plotSlots = Config.plot_slots;
       const plotMembers = Cache.PlotMembers;
-      const members = World.Members();
+      const players = world.getAllPlayers();
 
       for (const slot of plotSlots) {
         const plot = plots.find((plot) => plot.slot === slot.slot);
@@ -1725,15 +1734,15 @@ export default class Plots {
           Math.floor(Math.random() * slot.locations.length)
         ] as Vector3;
 
-        for (const member of members) {
-          const inside = Location.Inside(slot.saveZone, member.Location());
+        for (const player of players) {
+          const inside = Location.Inside(slot.saveZone, player.location);
 
           if (!inside) {
             continue;
           }
           if (!plot) {
-            member.Teleport(warp);
-            member.SendError(`No one has this plot claimed!`);
+            player.teleport(warp);
+            player.sendError(`No one has this plot claimed!`);
             continue;
           }
           if (this.Raidnight) {
@@ -1741,12 +1750,12 @@ export default class Plots {
           }
 
           const plotMember = plotMembers.find(
-            (entry) => entry.entity_id === member.EntityID()
+            (entry) => entry.entity_id === player.id
           );
 
           if (!plotMember || plotMember.plot_id !== plot._id) {
-            member.Teleport(warp);
-            member.SendError(`You are not allowed in this plot!`);
+            player.teleport(warp);
+            player.sendError(`You are not allowed in this plot!`);
             continue;
           }
         }
@@ -1758,12 +1767,12 @@ export default class Plots {
    * MAKE SURE PLOT IS LOADED!
    */
   public static SavePlot(plot_id: string, slot: PlotSlot): void {
-    const manager = World.StructureManager();
+    const manager = world.structureManager;
 
     manager.delete(`plot:${plot_id}`);
     manager.createFromWorld(
       `plot:${plot_id}`,
-      World.Overworld(),
+      world.overworld(),
       slot.saveZone[0],
       slot.saveZone[1],
       {
@@ -1799,14 +1808,14 @@ export default class Plots {
   private static async PlotRecovery(): Promise<void> {
     await Sleep(0);
 
-    World.RunCommand("tickingarea remove_all");
+    world.runCommand("tickingarea remove_all");
 
-    if (World.Members().length !== 0) {
+    if (world.getAllPlayers().length !== 0) {
       return;
     }
 
     const activePlots = await API.Plots.ActivePlots();
-    const defaultPlot = World.StructureManager().get(
+    const defaultPlot = world.structureManager.get(
       Config.plot_default_structure
     );
 
@@ -1816,7 +1825,7 @@ export default class Plots {
     }
 
     if (activePlots.data.length === 0) {
-      Plots.AllowMembers = true;
+      Plots.AllowPlayers = true;
 
       Logger.Notice("No plots to unload.");
       return;
@@ -1828,19 +1837,19 @@ export default class Plots {
 
     Logger.Info(`Unloading ${activePlots.data.length} plots...`);
 
-    for (const member of World.Members()) {
-      const { data: profile } = await API.Profiles.Profile(member.EntityID());
+    for (const player of world.getAllPlayers()) {
+      const { data: profile } = await API.Profiles.Profile(player.id);
 
       if (profile && profile.admin) {
         continue;
       }
 
-      member.Disconnect(
+      player.disconnect(
         "Plots are currently being unloaded. You are not allowed to be in the server during this process to protect against progress loss."
       );
     }
 
-    World.BroadcastWarning("Plot recovery has started!");
+    world.broadcastWarning("Plot recovery has started!");
 
     for (let i = 0; i < activePlots.data.length; i++) {
       const plot = activePlots.data[i];
@@ -1857,16 +1866,16 @@ export default class Plots {
         continue;
       }
 
-      const tickingID = await World.LoadArea(slot.saveZone[0]);
+      const tickingID = await world.loadArea(slot.saveZone[0]);
 
       Plots.SavePlot(plot._id, slot);
 
       await Sleep(5);
       await API.Plots.UpdatePlot(plot._id, { slot: 0 });
 
-      World.StructureManager().place(
+      world.structureManager.place(
         defaultPlot,
-        World.Overworld(),
+        world.overworld(),
         slot.saveZone[0],
         {
           animationMode: StructureAnimationMode.Layers,
@@ -1877,15 +1886,15 @@ export default class Plots {
 
       await Sleep(20 * 5);
 
-      World.UnloadArea(tickingID);
+      world.unloadArea(tickingID);
 
       Logger.Notice(`Unloaded plot ${slot.slot}`);
     }
 
-    Plots.AllowMembers = true;
+    Plots.AllowPlayers = true;
 
     Logger.Info("Plots unloaded.");
-    World.BroadcastSuccess("Plot recovery has finished!");
+    world.broadcastSuccess("Plot recovery has finished!");
   }
   private static async OptimizePlots(): Promise<void> {
     const plots = await API.Plots.AllPlots();
@@ -1896,13 +1905,13 @@ export default class Plots {
       return;
     }
 
-    const structureIDs = World.StructureManager()
+    const structureIDs = world.structureManager
       .getWorldStructureIds()
       .filter((entry) => entry.startsWith("plot:"));
 
     for (const id of structureIDs) {
       if (!plots.data.some((entry) => id.includes(entry._id))) {
-        World.StructureManager().delete(id);
+        world.structureManager.delete(id);
         deleted++;
       }
     }
@@ -1914,7 +1923,6 @@ export default class Plots {
     Logger.Notice(`Deleted ${deleted} plots.`);
   }
 
-  private static UpdateDayTag(): void {}
   private static UpdateRaidnight(): void {
     const line = "§7======================";
 
@@ -1931,7 +1939,7 @@ export default class Plots {
         world.gameRules.keepInventory = false;
         world.gameRules.pvp = true;
 
-        World.Broadcast(
+        world.broadcast(
           [
             line,
             `§l§cRaidnight Has Begun!`,
@@ -1940,7 +1948,12 @@ export default class Plots {
             line,
           ].join("\n")
         );
-        World.PlaySound("raidnight_start", 0.7);
+
+        for (const player of world.getAllPlayers()) {
+          player.playSound(CommonSounds.RAIDNIGHT_START, {
+            pitch: 0.7,
+          });
+        }
       }
       if (!isRaidnight && (this.Raidnight === undefined || this.Raidnight)) {
         this.Raidnight = false;
@@ -1948,7 +1961,7 @@ export default class Plots {
         world.gameRules.keepInventory = true;
         world.gameRules.pvp = false;
 
-        World.Broadcast(
+        world.broadcast(
           [
             line,
             `§l§aRaidnight Has Ended!`,
@@ -1957,7 +1970,11 @@ export default class Plots {
             line,
           ].join("\n")
         );
-        World.PlaySound("raidnight_end", 0.5);
+        for (const player of world.getAllPlayers()) {
+          player.playSound(CommonSounds.RAIDNIGHT_END, {
+            pitch: 0.5,
+          });
+        }
       }
     }, Config.raidnight_interval);
   }

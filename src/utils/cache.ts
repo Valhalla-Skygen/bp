@@ -1,10 +1,9 @@
-import { system } from "@minecraft/server";
+import { system, world } from "@minecraft/server";
 import Config from "../lib/config";
 import type { Profile } from "../types/API";
 import type { Plot, PlotMember } from "../types/plots";
 import API from "./API/API";
 import Logger from "./logger";
-import World from "./wrappers/world";
 
 export default class Cache {
   public static Profiles: Profile[] = [];
@@ -26,13 +25,13 @@ export default class Cache {
   }
 
   private static async Update(): Promise<void> {
-    const members = World.Members();
+    const players = world.getAllPlayers();
     const profiles = await API.Profiles.Online(
-      members.map((member) => member.EntityID())
+      players.map((player) => player.id)
     );
     const plots = await API.Plots.ActivePlots();
     const plotMembers = await API.Plots.ActiveMembers(
-      members.map((member) => member.EntityID())
+      players.map((player) => player.id)
     );
 
     if (!plots.data || !plotMembers.data || !profiles.data) {
@@ -53,23 +52,25 @@ export default class Cache {
   private static CombatLoop(): void {
     system.runInterval(() => {
       for (const [entity_id, time] of Object.entries(this.CombatTime)) {
-        const member = World.FindMember(entity_id);
+        const player = world.findPlayer(entity_id);
 
-        if (!member) {
+        if (!player) {
           delete this.CombatTime[entity_id];
           continue;
         }
         if (time - 1 === 0) {
           delete this.CombatTime[entity_id];
 
-          member.PlaySound("warning");
-          member.ActionBar([Config.colors.warning + "You have left combat!"]);
+          player.playSound("note.harp");
+          player.onScreenDisplay.setActionBar([
+            Config.colors.warning + "You have left combat!",
+          ]);
           continue;
         }
 
         this.CombatTime[entity_id] = time - 1;
 
-        member.ActionBar([
+        player.onScreenDisplay.setActionBar([
           Config.colors.warning + `${time - 1} seconds left in combat!`,
         ]);
       }

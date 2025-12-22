@@ -1,28 +1,27 @@
+import { Player, world } from "@minecraft/server";
 import API from "../utils/API/API";
 import Cache from "../utils/cache";
 import Form from "../utils/form/form";
 import Formatter from "../utils/formatter";
 import TargetFinder from "../utils/targetFinder";
-import type Member from "../utils/wrappers/member";
-import World from "../utils/wrappers/world";
 
 export default class Transfer {
-  public static async View(member: Member): Promise<void> {
-    const target = await TargetFinder.OfflineSearch(member);
+  public static async View(player: Player): Promise<void> {
+    const target = await TargetFinder.OfflineSearch(player);
 
     if (!target) {
       return;
     }
-    if (target.entity_id === member.EntityID()) {
-      member.SendError("You cannot transfer to yourself!");
+    if (target.entity_id === player.id) {
+      player.sendError("You cannot transfer to yourself!");
       return;
     }
 
     const profile = Cache.Profiles.find(
-      (profile) => profile.entity_id === member.EntityID()
+      (profile) => profile.entity_id === player.id
     );
     const form = await Form.ModalForm({
-      member,
+      player: player,
       title: "§cTransfer Menu",
       options: [
         {
@@ -41,44 +40,44 @@ export default class Transfer {
     });
 
     if (!form.formValues) {
-      member.SendError("Form closed.");
+      player.sendError("Form closed.");
       return;
     }
 
     const amount = parseInt(form.formValues[1] as string);
 
     if (isNaN(amount) || amount <= 0) {
-      member.SendError("Please enter a valid number!");
+      player.sendError("Please enter a valid number!");
       return;
     }
 
-    const request = await API.Profiles.Transfer(member.EntityID(), {
+    const request = await API.Profiles.Transfer(player.id, {
       target: target.entity_id,
       amount,
     });
-    const targetMember = World.FindMember(target.entity_id);
+    const targetMember = world.findPlayer(target.entity_id);
 
     switch (request.status) {
       case 200:
-        member.SendSuccess(
+        player.sendSuccess(
           `Successfully transferred $${amount} to ${target.username}!`
         );
 
         if (targetMember) {
-          targetMember.SendSuccess(
-            `You have received $${amount} from ${member.Username()}!`
+          targetMember.sendSuccess(
+            `You have received $${amount} from ${player.name}!`
           );
         }
         break;
       case 402:
-        member.SendError("You do not have enough money for this transfer!");
+        player.sendError("You do not have enough money for this transfer!");
         break;
       case 409:
-        member.SendError("You cannot transfer to yourself!");
+        player.sendError("You cannot transfer to yourself!");
         break;
 
       default:
-        member.SendError("Failed to transfer money.");
+        player.sendError("Failed to transfer money.");
     }
   }
 }
