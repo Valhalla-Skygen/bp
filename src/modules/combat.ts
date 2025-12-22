@@ -1,10 +1,10 @@
 import {
+  EntityHurtAfterEvent,
   Player,
   PlayerLeaveAfterEvent,
   PlayerSpawnAfterEvent,
   system,
   world,
-  type EntityHitEntityAfterEvent,
 } from "@minecraft/server";
 import Config from "../lib/config";
 import API from "../utils/API/API";
@@ -51,8 +51,11 @@ export default class Combat {
 
     delete Cache.CombatTime[player.id];
   }
-  public static OnHit(event: EntityHitEntityAfterEvent): void {
-    const { damagingEntity: source, hitEntity: target } = event;
+  public static OnHurt(event: EntityHurtAfterEvent): void {
+    const {
+      damageSource: { damagingEntity: source },
+      hurtEntity: target,
+    } = event;
 
     if (!(source instanceof Player) || !(target instanceof Player)) {
       return;
