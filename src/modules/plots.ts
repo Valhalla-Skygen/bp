@@ -15,7 +15,7 @@ import {
   type Vector3,
 } from "@minecraft/server";
 import Config from "../lib/config";
-import type { ActionFormButton } from "../types/chestUI";
+import type { ActionFormButton } from "../types/form";
 import { CommonSounds } from "../types/global";
 import {
   PlotRanks,

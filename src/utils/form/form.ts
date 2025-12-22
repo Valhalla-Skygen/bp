@@ -10,7 +10,7 @@ import type {
   ChestForm,
   ChestFormItem,
   ModalForm,
-} from "../../types/chestUI";
+} from "../../types/form";
 import { ChestFormData } from "./chestUI/forms";
 
 export default class Form {
