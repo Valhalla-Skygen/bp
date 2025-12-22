@@ -50,6 +50,7 @@ export default class Plots {
     await this.OptimizePlots();
 
     this.UpdateRaidnight();
+    this.UpdatePlotTags();
   }
 
   public static async OnSpawn(event: PlayerSpawnAfterEvent): Promise<void> {
@@ -1977,5 +1978,40 @@ export default class Plots {
         }
       }
     }, Config.raidnight_interval);
+  }
+  private static UpdatePlotTags(): void {
+    system.runInterval(() => {
+      for (const player of world.getAllPlayers()) {
+        const plotTags = player
+          .getTags()
+          .filter((tag) => tag.startsWith("plot") && !tag.endsWith("s"));
+        const member = Cache.PlotMembers.find(
+          (entry) => entry.entity_id === player.id
+        );
+        const plot = Cache.Plots.find((entry) => entry._id === member?.plot_id);
+
+        if (!member || !plot) {
+          for (const tag of plotTags) {
+            player.removeTag(tag);
+          }
+
+          continue;
+        }
+        if (!plot) {
+          continue;
+        }
+
+        if (plotTags.length > 1) {
+          for (const tag of plotTags) {
+            if (!tag.endsWith(plot.slot.toString())) {
+              player.removeTag(tag);
+            }
+          }
+        }
+        if (!plotTags.some((tag) => tag.endsWith(plot.slot.toString()))) {
+          player.addTag(`plot${plot.slot}`);
+        }
+      }
+    }, Config.plot_tag_interval);
   }
 }

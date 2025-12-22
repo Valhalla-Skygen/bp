@@ -37,6 +37,7 @@ const Config = {
 
   name_interval: 5,
   plot_eject_interval: 5,
+  plot_tag_interval: 60,
   sidebar_interval: 1,
   floating_text_interval: 100,
   force_ui_interval: 100,
@@ -97,17 +98,17 @@ const Config = {
   chat_period: 5 * 20,
   chat_limit: 3, // Messages
   chat_rank_definitions: [
-    { id: "dev",      name: ""},
-    { id: "builder",  name: ""},
-    { id: "designer", name: ""},
-    { id: "staff",    name: ""},
-    { id: "helper",   name: ""},
-    { id: "pbTester", name: ""},
-    { id: "beaner",   name: ""},
+    { id: "dev", name: "" },
+    { id: "builder", name: "" },
+    { id: "designer", name: "" },
+    { id: "staff", name: "" },
+    { id: "helper", name: "" },
+    { id: "pbTester", name: "" },
+    { id: "beaner", name: "" },
   ],
   chat_ranks: [
     { username: "Espryra", ranks: ["dev"] },
-    { username: "Zappy NE", ranks: ["dev","pbTester"] },
+    { username: "Zappy NE", ranks: ["dev", "pbTester"] },
     { username: "Mr Trex420", ranks: ["builder"] },
     { username: "Daddy Kazse", ranks: ["designer"] },
     { username: "OarisRose", ranks: ["staff"] },
@@ -448,7 +449,7 @@ const Config = {
       locations: [{ x: 1366, y: 66, z: -5578 }], // 1366 66 -5578
       rotation: 270,
       saveZone: [
-        { x: 1359, y: 53, z: -5598 }, 
+        { x: 1359, y: 53, z: -5598 },
         { x: 1374, y: 115, z: -5583 },
       ],
     },

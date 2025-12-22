@@ -32,7 +32,6 @@ world.afterEvents.entityHitEntity.subscribe((event) => {
   Shops.OnHit(event);
   Stats.OnHit(event);
   StarterKit.OnHit(event);
-  Combat.OnHit(event);
 });
 world.afterEvents.itemUse.subscribe((event) => {
   UI.OnUse(event);
@@ -49,6 +48,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 world.afterEvents.entityHurt.subscribe((event) => {
   Stats.OnHurt(event);
+  Combat.OnHurt(event);
 });
 
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {

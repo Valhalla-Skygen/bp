@@ -49,6 +49,486 @@
               {
                 "any_of": [
                   {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot1",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot1",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot2",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot2",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot3",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot3",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot4",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot4",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot5",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot5",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot6",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot6",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot7",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot7",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot8",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot8",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot9",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot9",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot10",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot10",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot11",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot11",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot12",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot12",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot13",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot13",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot14",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot14",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot15",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot15",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot16",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot16",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot17",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot17",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot18",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot18",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot19",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot19",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot20",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot20",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot21",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot21",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot22",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot22",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot23",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot23",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot24",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot24",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot25",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot25",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot26",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot26",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot27",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot27",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot28",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot28",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot29",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot29",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "plot30",
+                        "operator": "=="
+                      },
+                      {
+                        "test": "has_tag",
+                        "subject": "other",
+                        "value": "plot30",
+                        "operator": "=="
+                      }
+                    ]
+                  },
+                  {
                     "test": "has_tag",
                     "subject": "self",
                     "value": "spawn",
