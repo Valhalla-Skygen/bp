@@ -32,7 +32,7 @@ export default class Stats {
     if (!profile.data) {
       await API.Profiles.Create({
         entity_id: player.id,
-        username: player.id,
+        username: player.name,
       });
 
       player.clear();
