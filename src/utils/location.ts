@@ -17,10 +17,22 @@ export default class Location {
       Math.floor(subject.z) <= Math.floor(maxZ)
     );
   }
-  public static Same(first: Vector3, second: Vector3): boolean {
-    return (
-      Math.floor(first.x) === Math.floor(second.x) &&
-      Math.floor(first.z) === Math.floor(second.z)
-    );
+  public static Same(
+    first: Vector3,
+    second: Vector3,
+    includeY = false
+  ): boolean {
+    if (!includeY) {
+      return (
+        Math.floor(first.x) === Math.floor(second.x) &&
+        Math.floor(first.z) === Math.floor(second.z)
+      );
+    } else {
+      return (
+        Math.floor(first.x) === Math.floor(second.x) &&
+        Math.floor(first.y) === Math.floor(second.y) &&
+        Math.floor(first.z) === Math.floor(second.z)
+      );
+    }
   }
 }
