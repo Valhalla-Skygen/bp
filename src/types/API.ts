@@ -15,6 +15,12 @@ export interface Profile {
   killstreak_highest: number;
   balance: number;
   souls: number;
+  crate_common: number;
+  crate_uncommon: number;
+  crate_rare: number;
+  crate_epic: number;
+  crate_legendary: number;
+  crate_valhalla: number;
   time_played: number;
   admin: boolean;
   whitelisted: boolean;
