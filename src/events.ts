@@ -1,6 +1,7 @@
 import { system, world } from "@minecraft/server";
 import ChatRanks from "./modules/chatRanks";
 import Combat from "./modules/combat";
+import Crates from "./modules/crates";
 import Generators from "./modules/generators";
 import LagClear from "./modules/lagClear";
 import Moderation from "./modules/moderation";
@@ -62,6 +63,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
 });
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
   Plots.OnInteract(event);
+  Crates.OnInteract(event);
   Protection.OnInteraction(event);
 });
 world.beforeEvents.chatSend.subscribe((event) => {

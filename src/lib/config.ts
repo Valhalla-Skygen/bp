@@ -5,6 +5,7 @@ import type { BanDuration } from "../types/moderation";
 import type { PlotSlot } from "../types/plots";
 import type { Zone } from "../types/protection";
 import type { Warp } from "../types/warps";
+import Crates from "./crates";
 import { SellingOptions, Shops } from "./shops";
 import StarterKit from "./starterKit";
 
@@ -625,6 +626,8 @@ const Config = {
       ],
     },
   ] as PlotSlot[],
+
+  crates: Crates,
 };
 
 export default Config;
